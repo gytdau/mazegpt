@@ -20,6 +20,7 @@ output = """###############
 # %%
 from enum import Enum
 from typing import List
+import html
 
 class Tile(Enum):
     EMPTY = " "
@@ -28,46 +29,55 @@ class Tile(Enum):
     END = "e"
     PATH = "."
 
-def render_path_on_maze_with_directions(maze: List[List[Tile]], directions: List[str]) -> None:
-    # Find the start position
-    start_x, start_y = None, None
-    for i, row in enumerate(maze):
-        for j, _ in enumerate(row):
-            if maze[i][j] == Tile.START:
-                start_x, start_y = i, j
-                break
-        if start_x is not None:
-            break
+def create_maze_html(maze: List[List[Tile]], directions: str) -> str:
+    # Starting position
+    start_pos = next(((i, j) for i, row in enumerate(maze) for j, tile in enumerate(row) if tile == Tile.START), None)
+    if not start_pos:
+        return "Start position not found."
+    
+    x, y = start_pos
+    path_positions = [start_pos]  # List of positions (x, y) visited
 
-    # Apply directions to mark the path
-    x, y = start_x, start_y
-    for direction in directions:
-        if direction == "N":
-            x -= 1
-        elif direction == "S":
-            x += 1
-        elif direction == "E":
-            y += 1
-        elif direction == "W":
-            y -= 1
-        # Mark the path by setting the current position to a special path tile, if it's not start or end
-        if 0 <= x < len(maze) and 0 <= y < len(maze[0]):
-            if maze[x][y] not in [Tile.START, Tile.END]:
-                # if within range:
-                    maze[x][y] = Tile.PATH  # Consider using a different tile or mechanism to mark the path if necessary
+    # Mapping of directions to movement deltas
+    direction_mapping = {
+        "E": (0, 1),
+        "W": (0, -1),
+        "N": (-1, 0),
+        "S": (1, 0)
+    }
 
-    # Print the maze with the path
-    for i, row in enumerate(maze):
-        for j, tile in enumerate(row):
-            if (i, j) == (start_x, start_y):
-                print('S', end='')
-            elif tile == Tile.END:
-                print('E', end='')
-            elif tile == Tile.PATH:
-                print('.', end='')  # Mark path
+    for move in directions:
+        if move in direction_mapping:
+            dx, dy = direction_mapping[move]
+            x += dx
+            y += dy
+            # Check bounds and wall collision
+            if 0 <= x < len(maze) and 0 <= y < len(maze[0]):
+                path_positions.append((x, y))
             else:
-                print(tile.value, end='')
-        print()
+                # If out of bounds, stop processing further moves
+                break
+
+    # Create HTML representation
+    html_str = '<table style="border-collapse: collapse;">\n'
+    for i, row in enumerate(maze):
+        html_str += '  <tr>\n'
+        for j, tile in enumerate(row):
+            color = ""
+            if (i, j) == start_pos:
+                color = "green"
+            elif (i, j) in path_positions:
+                color = "#0000FF"
+            elif tile == Tile.WALL:
+                color = "black"
+            elif tile == Tile.END:
+                color = "red"
+            cell = html.escape(tile.value) if tile != Tile.PATH or (i, j) in path_positions else " "
+            html_str += f'    <td style="width: 20px; height: 20px; border: 1px solid; background-color: {color}; text-align: center;">{cell}</td>\n'
+        html_str += '  </tr>\n'
+    html_str += '</table>'
+
+    return html_str
 
 def parse_maze(output: str) -> List[List[Tile]]:
     # find first capital letter
@@ -76,7 +86,7 @@ def parse_maze(output: str) -> List[List[Tile]]:
     first_capital_index = output.index(first_capital_letter)
     # split the output at the first capital letter
     maze_output, directions_output = output[:first_capital_index], output[first_capital_index:]
-    parsed_maze = [[Tile(c) for c in row] for row in maze_output.split("\n")[:-1]]
+    parsed_maze = [[Tile(c) for c in row] for row in maze_output.split("\n")]
     parsed_directions = parse_directions(directions_output)
     print(parsed_maze)
     print(parsed_directions)
@@ -89,6 +99,9 @@ def parse_directions(output: str) -> List[str]:
 maze, directions = parse_maze(output)
 
 # %%
-render_path_on_maze_with_directions(maze, directions)
+from IPython.display import display, HTML
+html_str = create_maze_html(maze, directions)
+
+display(HTML(html_str))
 
 # %%
