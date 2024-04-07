@@ -1,26 +1,9 @@
-# %%
-output = """###############
-#s  #         #
-### ### # #####
-# #   # #     #
-# ### ##### # #
-#     #   # # #
-# ##### # ### #
-#       # #   #
-######### # # #
-#       #   # #
-# ### ####### #
-#   #       # #
-### ####### # #
-#         #  e#
-############### EESSEESSWWWWSSEEEEEENNEESSSSWWWWWWSSEEEENNEESSEE
-"""
-
-
-# %%
 from enum import Enum
-from typing import List
 import html
+from typing import List
+
+from IPython.display import display, HTML
+
 
 class Tile(Enum):
     EMPTY = " "
@@ -29,12 +12,13 @@ class Tile(Enum):
     END = "e"
     PATH = "."
 
+
 def create_maze_html(maze: List[List[Tile]], directions: str) -> str:
     # Starting position
     start_pos = next(((i, j) for i, row in enumerate(maze) for j, tile in enumerate(row) if tile == Tile.START), None)
     if not start_pos:
         return "Start position not found."
-    
+
     x, y = start_pos
     path_positions = [start_pos]  # List of positions (x, y) visited
 
@@ -77,7 +61,12 @@ def create_maze_html(maze: List[List[Tile]], directions: str) -> str:
         html_str += '  </tr>\n'
     html_str += '</table>'
 
-    return html_str
+    display(HTML(html_str))
+
+
+def parse_directions(output: str) -> List[str]:
+    return output
+
 
 def parse_maze(output: str) -> List[List[Tile]]:
     # find first capital letter
@@ -91,17 +80,3 @@ def parse_maze(output: str) -> List[List[Tile]]:
     print(parsed_maze)
     print(parsed_directions)
     return parsed_maze, parsed_directions
-
-
-def parse_directions(output: str) -> List[str]:
-    return output
-
-maze, directions = parse_maze(output)
-
-# %%
-from IPython.display import display, HTML
-html_str = create_maze_html(maze, directions)
-
-display(HTML(html_str))
-
-# %%

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "nanogpt"
+name = "mazegpt"
 version = "0.1.0"
 description = ""
 authors = ["Gytis Daujotas <gytis@atob.com>"]
@@ -13,6 +13,7 @@ numpy = "^1.25.2"
 torch = "2.0.0"
 tiktoken = "^0.4.0"
 wandb = "^0.15.9"
+gytis = { path = "../gytis-tools/", develop = false }
 
 
 [tool.poetry.group.dev.dependencies]
