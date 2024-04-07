@@ -13,7 +13,7 @@ class Tile(Enum):
     PATH = "."
 
 
-def create_maze_html(maze: List[List[Tile]], directions: str) -> str:
+def display_maze(maze: List[List[Tile]], directions: str = None) -> str:
     # Starting position
     start_pos = next(((i, j) for i, row in enumerate(maze) for j, tile in enumerate(row) if tile == Tile.START), None)
     if not start_pos:
@@ -30,17 +30,18 @@ def create_maze_html(maze: List[List[Tile]], directions: str) -> str:
         "S": (1, 0)
     }
 
-    for move in directions:
-        if move in direction_mapping:
-            dx, dy = direction_mapping[move]
-            x += dx
-            y += dy
-            # Check bounds and wall collision
-            if 0 <= x < len(maze) and 0 <= y < len(maze[0]):
-                path_positions.append((x, y))
-            else:
-                # If out of bounds, stop processing further moves
-                break
+    if directions:
+        for move in directions:
+            if move in direction_mapping:
+                dx, dy = direction_mapping[move]
+                x += dx
+                y += dy
+                # Check bounds and wall collision
+                if 0 <= x < len(maze) and 0 <= y < len(maze[0]):
+                    path_positions.append((x, y))
+                else:
+                    # If out of bounds, stop processing further moves
+                    break
 
     # Create HTML representation
     html_str = '<table style="border-collapse: collapse;">\n'
