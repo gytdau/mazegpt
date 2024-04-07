@@ -64,3 +64,80 @@ maze = generate_maze(n)
 display_maze(maze)
 
 # %%
+
+from collections import deque
+
+def find_shortest_path(maze: List[List[Tile]]) -> List[Tuple[int, int]]:
+    n = len(maze)
+    # Directions: up, right, down, left
+    directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+    visited = [[False for _ in range(n)] for _ in range(n)]
+    distance = [[0 for _ in range(n)] for _ in range(n)]
+    prev = [[None for _ in range(n)] for _ in range(n)]
+
+    # Find start
+    start = end = None
+    for i in range(n):
+        for j in range(n):
+            if maze[i][j] == Tile.START:
+                start = (i, j)
+            elif maze[i][j] == Tile.END:
+                end = (i, j)
+    
+    if not start or not end:
+        return []  # No start or end
+    
+    queue = deque([start])
+    visited[start[0]][start[1]] = True
+
+    # BFS
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) == end:
+            break  # Found the end
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < n and 0 <= ny < n and not visited[nx][ny] and maze[nx][ny] != Tile.WALL:
+                queue.append((nx, ny))
+                visited[nx][ny] = True
+                prev[nx][ny] = (x, y)
+                distance[nx][ny] = distance[x][y] + 1
+
+    # Reconstruct path
+    path = []
+    at = end
+    while at:
+        path.append(at)
+        at = prev[at[0]][at[1]]
+    path.reverse()
+
+    return path if path[0] == start else []  # Return path if start is included, else return empty
+
+# Example usage
+path = find_shortest_path(maze)
+print("Path from start to end:")
+for step in path:
+    print(step)
+
+# %%
+
+def render_path_on_maze(maze: List[List[Tile]], path: List[Tuple[int, int]]) -> None:
+    # Convert path to a set for efficient lookup
+    path_set = set(path)
+
+    for i, row in enumerate(maze):
+        for j, tile in enumerate(row):
+            if (i, j) in path_set and tile == Tile.EMPTY:
+                print('.', end='')
+            elif tile == Tile.START:
+                print('S', end='')
+            elif tile == Tile.END:
+                print('E', end='')
+            else:
+                print(tile.value, end='')
+        print()  # Newline after each row
+
+# Using the existing maze and path from the previous example
+render_path_on_maze(maze, path)
+
+# %%
