@@ -8,6 +8,7 @@ class Tile(Enum):
     WALL = "#"
     START = "S"
     END = "E"
+    PATH = "."
 
 def generate_maze(n: int) -> List[List[Tile]]:
     # Initialize maze with all walls
@@ -65,11 +66,9 @@ display_maze(maze)
 
 # %%
 
-# %%
-
 from collections import deque
 
-def find_shortest_path(maze: List[List[Tile]]) -> List[Tuple[int, int]]:
+def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     n = len(maze)
     # Directions: up, right, down, left
     directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
@@ -113,43 +112,12 @@ def find_shortest_path(maze: List[List[Tile]]) -> List[Tuple[int, int]]:
         at = prev[at[0]][at[1]]
     path.reverse()
 
-    return path if path[0] == start else []  # Return path if start is included, else return empty
 
-# Example usage
-path = find_shortest_path(maze)
-print("Path from start to end:")
-for step in path:
-    print(step)
-
-# %%
-
-def render_path_on_maze(maze: List[List[Tile]], path: List[Tuple[int, int]]) -> None:
-    # Convert path to a set for efficient lookup
-    path_set = set(path)
-
-    for i, row in enumerate(maze):
-        for j, tile in enumerate(row):
-            if (i, j) in path_set and tile == Tile.EMPTY:
-                print('.', end='')
-            elif tile == Tile.START:
-                print('S', end='')
-            elif tile == Tile.END:
-                print('E', end='')
-            else:
-                print(tile.value, end='')
-        print()  # Newline after each row
-
-# Using the existing maze and path from the previous example
-render_path_on_maze(maze, path)
-
-# %%
-
-def path_to_directions(path: List[Tuple[int, int]]) -> List[str]:
+    # Convert path to directions
     directions = []
     for i in range(1, len(path)):
         dx = path[i][0] - path[i-1][0]
         dy = path[i][1] - path[i-1][1]
-
         if dx == 1:
             directions.append("S")  # South
         elif dx == -1:
@@ -158,10 +126,55 @@ def path_to_directions(path: List[Tuple[int, int]]) -> List[str]:
             directions.append("E")  # East
         elif dy == -1:
             directions.append("W")  # West
-    return directions
 
-# Example usage with the path variable from before
-directions = path_to_directions(path)
-print("Directions:", ' '.join(directions))
+    return directions if path else []  # Return directions if path is valid
+
+
+# Example usage
+path = find_shortest_path_with_directions(maze)
+print("Path from start to end:")
+print(path)
+
+# %%
+def render_path_on_maze_with_directions(maze: List[List[Tile]], directions: List[str]) -> None:
+    # Find the start position
+    start_x, start_y = None, None
+    for i, row in enumerate(maze):
+        for j, _ in enumerate(row):
+            if maze[i][j] == Tile.START:
+                start_x, start_y = i, j
+                break
+        if start_x is not None:
+            break
+    
+    # Apply directions to mark the path
+    x, y = start_x, start_y
+    for direction in directions:
+        if direction == "N":
+            x -= 1
+        elif direction == "S":
+            x += 1
+        elif direction == "E":
+            y += 1
+        elif direction == "W":
+            y -= 1
+        # Mark the path by setting the current position to a special path tile, if it's not start or end
+        if maze[x][y] not in [Tile.START, Tile.END]:
+            maze[x][y] = Tile.PATH  # Consider using a different tile or mechanism to mark the path if necessary
+
+    # Print the maze with the path
+    for i, row in enumerate(maze):
+        for j, tile in enumerate(row):
+            if (i, j) == (start_x, start_y):
+                print('S', end='')
+            elif tile == Tile.END:
+                print('E', end='')
+            elif tile == Tile.PATH:
+                print('.', end='')  # Mark path
+            else:
+                print(tile.value, end='')
+        print()
+
+render_path_on_maze_with_directions(maze, path)
 
 # %%
