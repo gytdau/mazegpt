@@ -65,6 +65,8 @@ display_maze(maze)
 
 # %%
 
+# %%
+
 from collections import deque
 
 def find_shortest_path(maze: List[List[Tile]]) -> List[Tuple[int, int]]:
@@ -139,5 +141,27 @@ def render_path_on_maze(maze: List[List[Tile]], path: List[Tuple[int, int]]) -> 
 
 # Using the existing maze and path from the previous example
 render_path_on_maze(maze, path)
+
+# %%
+
+def path_to_directions(path: List[Tuple[int, int]]) -> List[str]:
+    directions = []
+    for i in range(1, len(path)):
+        dx = path[i][0] - path[i-1][0]
+        dy = path[i][1] - path[i-1][1]
+
+        if dx == 1:
+            directions.append("S")  # South
+        elif dx == -1:
+            directions.append("N")  # North
+        elif dy == 1:
+            directions.append("E")  # East
+        elif dy == -1:
+            directions.append("W")  # West
+    return directions
+
+# Example usage with the path variable from before
+directions = path_to_directions(path)
+print("Directions:", ' '.join(directions))
 
 # %%
