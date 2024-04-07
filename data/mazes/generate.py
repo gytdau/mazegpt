@@ -3,12 +3,7 @@ from enum import Enum
 from typing import List, Tuple
 import random
 
-class Tile(Enum):
-    EMPTY = " "
-    WALL = "#"
-    START = "s"
-    END = "e"
-    PATH = "."
+
 
 def generate_maze(n: int) -> List[List[Tile]]:
     # Initialize maze with all walls
@@ -63,6 +58,49 @@ def display_maze(maze: List[List[Tile]]) -> None:
 n = 15  # Size of the maze
 maze = generate_maze(n)
 display_maze(maze)
+
+
+from typing import List
+
+
+def render_path_on_maze_with_directions(maze: List[List[Tile]], directions: List[str]) -> None:
+    # Find the start position
+    start_x, start_y = None, None
+    for i, row in enumerate(maze):
+        for j, _ in enumerate(row):
+            if maze[i][j] == Tile.START:
+                start_x, start_y = i, j
+                break
+        if start_x is not None:
+            break
+
+    # Apply directions to mark the path
+    x, y = start_x, start_y
+    for direction in directions:
+        if direction == "N":
+            x -= 1
+        elif direction == "S":
+            x += 1
+        elif direction == "E":
+            y += 1
+        elif direction == "W":
+            y -= 1
+        # Mark the path by setting the current position to a special path tile, if it's not start or end
+        if maze[x][y] not in [Tile.START, Tile.END]:
+            maze[x][y] = Tile.PATH  # Consider using a different tile or mechanism to mark the path if necessary
+
+    # Print the maze with the path
+    for i, row in enumerate(maze):
+        for j, tile in enumerate(row):
+            if (i, j) == (start_x, start_y):
+                print('S', end='')
+            elif tile == Tile.END:
+                print('E', end='')
+            elif tile == Tile.PATH:
+                print('.', end='')  # Mark path
+            else:
+                print(tile.value, end='')
+        print()
 
 # %%
 
@@ -135,74 +173,38 @@ path = find_shortest_path_with_directions(maze)
 print("Path from start to end:")
 print(path)
 
-# %%
-def render_path_on_maze_with_directions(maze: List[List[Tile]], directions: List[str]) -> None:
-    # Find the start position
-    start_x, start_y = None, None
-    for i, row in enumerate(maze):
-        for j, _ in enumerate(row):
-            if maze[i][j] == Tile.START:
-                start_x, start_y = i, j
-                break
-        if start_x is not None:
-            break
-    
-    # Apply directions to mark the path
-    x, y = start_x, start_y
-    for direction in directions:
-        if direction == "N":
-            x -= 1
-        elif direction == "S":
-            x += 1
-        elif direction == "E":
-            y += 1
-        elif direction == "W":
-            y -= 1
-        # Mark the path by setting the current position to a special path tile, if it's not start or end
-        if maze[x][y] not in [Tile.START, Tile.END]:
-            maze[x][y] = Tile.PATH  # Consider using a different tile or mechanism to mark the path if necessary
-
-    # Print the maze with the path
-    for i, row in enumerate(maze):
-        for j, tile in enumerate(row):
-            if (i, j) == (start_x, start_y):
-                print('S', end='')
-            elif tile == Tile.END:
-                print('E', end='')
-            elif tile == Tile.PATH:
-                print('.', end='')  # Mark path
-            else:
-                print(tile.value, end='')
-        print()
-
 render_path_on_maze_with_directions(maze, path)
 
 # %%
 import json
 import tqdm
 
-def maze_to_json_compatible(maze: List[List[Tile]]) -> List[List[str]]:
-    return [[tile.value for tile in row] for row in maze]
 
-def write_maze_and_directions_to_file(maze: List[List[Tile]], directions: List[str], file_path='data.jsonl'):
-    # Convert the maze to a JSON-compatible format
-    maze_json_compatible = maze_to_json_compatible(maze)
+# %%
 
-    # Create a dictionary to hold both maze and directions
-    record = {
-        'maze': "\n".join(["".join(row) for row in maze_json_compatible]),
-        'directions': "".join(directions)
-    }
+import cProfile
+import pstats
 
-    # Serialize the record to a JSON string
-    record_json = json.dumps(record)
+# Assume your functions are defined here
 
-    # Write the JSON string to a file, appending a newline to form the JSON Lines format
+def main():
+    quantity = 1_000_000
+
+    file_path = "data.jsonl"
     with open(file_path, 'a') as file:
-        file.write(record_json + '\n')
+        for _ in tqdm.tqdm(range(quantity)):
+            maze = generate_maze(15)
+            directions = find_shortest_path_with_directions(maze)
+            # Convert the maze to a JSON-compatible format
+            maze_str = "\\n".join(["".join([tile.value for tile in row]) for row in maze])
+            directions_str = "".join(directions)
 
-for _ in tqdm.tqdm(range(1000)):
-    maze = generate_maze(15)
-    path = find_shortest_path_with_directions(maze)
-    write_maze_and_directions_to_file(maze, path)
+            # Use string interpolation to create the JSON string manually
+            record_json = f'{{"maze": "{maze_str}", "directions": "{directions_str}"}}'
+
+            # Write the JSON string to a file, appending a newline to form the JSON Lines format
+            file.write(record_json + '\n')
+
+main()
+
 # %%
