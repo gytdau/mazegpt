@@ -16,7 +16,7 @@ wandb_run_name = "mini-gpt" + datetime.datetime.now().strftime("-%Y-%m-%d-%H-%M-
 dataset = "mazes"
 gradient_accumulation_steps = 1
 batch_size = 64
-block_size = 256  # context of up to 256 previous characters
+block_size = 512  # context of up to 512 previous characters
 
 # baby GPT model :)
 n_layer = 6
@@ -34,3 +34,5 @@ warmup_iters = 100  # not super necessary potentially
 
 wandb_log = True
 compile = False
+
+start = "FILE:prompt.txt"

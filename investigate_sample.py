@@ -1,19 +1,19 @@
 # %%
 output = """###############
-#s#   #       #
-# # # # # #####
-#     #       #
-####### ### # #
-# #         # #
-####### ##### #
-# #   # #   # #
-# ####### ### #
-#   #     # # #
-##### ####### #
+#s  #         #
+### ### # #####
+# #   # #     #
+# ### ##### # #
+#     #   # # #
+# ##### # ### #
+#       # #   #
+######### # # #
+#       #   # #
+# ### ####### #
 #   #       # #
-### ######### #
-#            e#
-############### EEEESSWWSSSSEENNEESSWWSSSSEEEEEESSEEEEEE
+### ####### # #
+#         #  e#
+############### EESSEESSWWWWSSEEEEEENNEESSSSWWWWWWSSEEEENNEESSEE
 """
 
 
@@ -94,7 +94,7 @@ def parse_maze(output: str) -> List[List[Tile]]:
 
 
 def parse_directions(output: str) -> List[str]:
-    return output.split("\n")[-1]
+    return output
 
 maze, directions = parse_maze(output)
 

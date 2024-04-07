@@ -3,6 +3,12 @@ from enum import Enum
 from typing import List, Tuple
 import random
 
+class Tile(Enum):
+    EMPTY = " "
+    WALL = "#"
+    START = "s"
+    END = "e"
+    PATH = "."
 
 
 def generate_maze(n: int) -> List[List[Tile]]:
