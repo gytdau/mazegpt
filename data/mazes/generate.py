@@ -178,3 +178,31 @@ def render_path_on_maze_with_directions(maze: List[List[Tile]], directions: List
 render_path_on_maze_with_directions(maze, path)
 
 # %%
+import json
+import tqdm
+
+def maze_to_json_compatible(maze: List[List[Tile]]) -> List[List[str]]:
+    return [[tile.value for tile in row] for row in maze]
+
+def write_maze_and_directions_to_file(maze: List[List[Tile]], directions: List[str], file_path='data.jsonl'):
+    # Convert the maze to a JSON-compatible format
+    maze_json_compatible = maze_to_json_compatible(maze)
+
+    # Create a dictionary to hold both maze and directions
+    record = {
+        'maze': "\n".join(["".join(row) for row in maze_json_compatible]),
+        'directions': "".join(directions)
+    }
+
+    # Serialize the record to a JSON string
+    record_json = json.dumps(record)
+
+    # Write the JSON string to a file, appending a newline to form the JSON Lines format
+    with open(file_path, 'a') as file:
+        file.write(record_json + '\n')
+
+for _ in tqdm.tqdm(range(1000)):
+    maze = generate_maze(15)
+    path = find_shortest_path_with_directions(maze)
+    write_maze_and_directions_to_file(maze, path)
+# %%
