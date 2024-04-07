@@ -6,8 +6,8 @@ import random
 class Tile(Enum):
     EMPTY = " "
     WALL = "#"
-    START = "S"
-    END = "E"
+    START = "s"
+    END = "e"
     PATH = "."
 
 def generate_maze(n: int) -> List[List[Tile]]:
