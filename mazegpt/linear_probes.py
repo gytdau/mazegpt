@@ -163,13 +163,10 @@ targets = []
 for i, row in enumerate(dataset):
     serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
     tokens = torch.tensor(encode(serialized)).to(device)  # Ensure this is a tensor or convert it into one
-    classes = torch.zeros(len(tokens), 2).to(device)
-    classes[:, 0] = 1
-    classes[:, 1] = 0
+    classes = torch.zeros(len(tokens), dtype=torch.long).to(device)
 
     marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos in row["markers"]]
-    classes[marker_positions, 0] = 0
-    classes[marker_positions, 1] = 1
+    classes[marker_positions] = 1
     
     inputs.append(tokens.to(device))
     targets.append(classes.to(device))
@@ -183,7 +180,7 @@ test_inputs = inputs[int(len(inputs) * (1 - test_proportion)):]
 test_targets = targets[int(len(targets) * (1 - test_proportion)):]
 
 # Model
-probed_model = GPTWithLinearProbe(model, layer=0, num_classes=2)
+probed_model = GPTWithLinearProbe(model, layer=4, num_classes=2)
 optimizer = Adam(probed_model.parameters(), lr=0.001)
 
 # %%
@@ -198,6 +195,7 @@ def train_linear_probe():
             targets = targets.unsqueeze(0)
             optimizer.zero_grad()
             outputs = probed_model(inputs)
+            outputs = outputs.transpose(1, 2)
             loss = F.cross_entropy(outputs, targets)
             loss.backward()
             optimizer.step()
@@ -229,7 +227,7 @@ plt.show()
 maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
 # display_maze_with_markers(maze, directions, example_row["markers"])
 maze_token_length = len(example_row["maze"]) + 1 
-display_maze(maze, directions, signal=example_target[maze_token_length:, 1].cpu().tolist())
+display_maze(maze, directions, signal=example_target[maze_token_length:].cpu().tolist())
 
 # %%
 from plotly.subplots import make_subplots
@@ -240,26 +238,26 @@ import plotly.graph_objects as go
 probed_model.eval()
 
 # Select the example inputs and targets
-example_input = inputs_list[0]
-example_target = targets_list[0]
+example_input = test_inputs[0]
+example_target = test_targets[0]
 
 # Get the model's predictions for this example
 with torch.no_grad():  # No need to track gradients here
-    example_logits = probed_model(example_input).squeeze(0)
+    example_logits = probed_model(example_input.unsqueeze(0)).squeeze(0)
     softmaxed = F.softmax(example_logits, dim=-1).cpu()
 
 junction = softmaxed[:, 1]
 not_junction = softmaxed[:, 0]
 
 # Generate x values representing each token position
-token_positions = list(range(example_input.size(1)))
+token_positions = list(range(example_input.size(0)))
 
 # Create the plot
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=token_positions, y=junction, mode='lines+markers',
                          name='Junction', marker=dict(size=5), line=dict(shape='spline')))
 # Ground truth
-fig.add_trace(go.Scatter(x=token_positions, y=example_target[:, 1].cpu(), mode='lines+markers',
+fig.add_trace(go.Scatter(x=token_positions, y=example_target.cpu(), mode='lines+markers',
                          name='Ground Truth', marker=dict(size=5), line=dict(shape='spline')))
 
 fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}',
