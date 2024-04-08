@@ -21,7 +21,7 @@ output = """###############
 #       #   # #
 # ########### #
 #            e#
-###############;EESSSSEEEENNWWNNEEEEEESSWWSSSSEESSWWNNNNWWSSSSWWWWSSEEEEEEEE;
+###############;EESSSSEEEENNWWNNEEEEEEEESSWWSSSSEESSWWSSWWNNNNWWSSSSWWWWWWSSEEEEEEEEEEEE;
 """
 
 maze, directions = parse_maze(output)
