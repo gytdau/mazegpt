@@ -7,6 +7,7 @@ import pickle
 from contextlib import nullcontext
 import torch
 import tiktoken
+from gytis import imports
 from mazegpt.model import GPTConfig, GPT
 
 # -----------------------------------------------------------------------------
@@ -132,17 +133,21 @@ x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 import torch.nn as nn
 import json
 from mazegpt.utils import display_maze_with_markers, parse_maze
+from torch.utils.data import DataLoader, TensorDataset
+from torch.optim import Adam
+import torch.nn.functional as F
 
 class GPTWithLinearProbe(nn.Module):
-    def __init__(self, gpt_model, num_classes):
+    def __init__(self, gpt_model, layer, num_classes):
         super().__init__()
         self.gpt = gpt_model
+        self.layer = layer
         self.gpt.eval()  # Freeze the GPT model weights
         self.linear_probe = nn.Linear(gpt_model.config.n_embd, num_classes)
     
     def forward(self, idx):
-        _, hidden_states = self.gpt(idx)
-        last_hidden_state = hidden_states[:, -1, :]  # Get the last hidden state
+        hidden_states = self.gpt(idx, return_hidden_states=True)
+        last_hidden_state = hidden_states[self.layer :, :]  
         logits = self.linear_probe(last_hidden_state)
         return logits
 
@@ -152,19 +157,49 @@ with open(dataset_path, "r") as f:
     for line in f:
         dataset.append(json.loads(line))
 
-row = dataset[0]
-
-serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
-tokens = encode(serialized)
-classes = torch.zeros(len(tokens), dtype=torch.long)
-for marker, marker_pos in row["markers"]:
-    abs_pos = len(row["maze"] + ";") + marker_pos
-    classes[abs_pos] = 1
 
 # maze, directions = parse_maze(serialized)
 # display_maze_with_markers(maze, directions, row["markers"])
 # print(serialized)
 # print(classes)
+
+inputs, targets = [], []
+for row in dataset:
+    serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
+    tokens = torch.tensor(encode(serialized)).to(device)  # Ensure this is a tensor or convert it into one
+    classes = torch.zeros(len(tokens), 2).to(device)
+    
+    for marker, marker_pos in row["markers"]:
+        abs_pos = len(row["maze"] + ";") + marker_pos
+        classes[abs_pos] = torch.tensor([0, 1]).to(device)
+
+    # not sure how to set the other classes to [0,0]
+    inputs.append(tokens)
+    targets.append(classes)
+
+# Assuming inputs and targets are lists of tensors and can be concatenated
+inputs_tensor = [i.unsqueeze(0).to(device) for i in inputs]
+targets_tensor = [t.unsqueeze(0).to(device) for t in targets]
+
+
+# Model
+probed_model = GPTWithLinearProbe(model, layer=5, num_classes=2)  # Assuming binary classification
+optimizer = Adam(probed_model.parameters(), lr=0.001)
+
+# Training loop
+epochs = 10
+for epoch in range(epochs):
+    probed_model.train()
+    total_loss = 0
+    for idx, (inputs, targets) in enumerate(zip(inputs_tensor, targets_tensor)):
+        optimizer.zero_grad()
+        outputs = probed_model(inputs).squeeze(1)
+        outputs = outputs.to(device)
+        loss = F.cross_entropy(outputs, targets)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f"Epoch {epoch+1}, Loss: {total_loss/len(inputs_tensor)}")
 
 
 # %%
