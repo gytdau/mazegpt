@@ -81,7 +81,7 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
             for path_i, (pos, dir) in enumerate(path_positions):
                 if (i, j) == pos and dir:
                     cell_content += direction_arrows[dir]
-                    if signal:
+                    if signal and path_i < len(signal):
                         cell_style += interpolate_white_to_blue(signal[path_i] * 100)
             html_str += f'    <td style="width: 20px; height: 20px; border: 1px solid; {cell_style} text-align: center; color: black;">{html.escape(cell_content)}</td>\n'
         html_str += '  </tr>\n'

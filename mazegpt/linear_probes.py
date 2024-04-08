@@ -136,6 +136,7 @@ from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 import cProfile
 
 class GPTWithLinearProbe(nn.Module):
@@ -172,12 +173,22 @@ for i, row in enumerate(dataset):
     targets.append(classes.to(device))
 
 
+# Assume 'inputs' is a list of 1D tensors of variable lengths
+padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0)  # Pad with zero
+padded_targets = pad_sequence(targets, batch_first=True, padding_value=0)  # Choose appropriate padding_value for targets
+
 test_proportion = 0.2
 
-train_inputs = inputs[:int(len(inputs) * (1 - test_proportion))]
-train_targets = targets[:int(len(targets) * (1 - test_proportion))]
-test_inputs = inputs[int(len(inputs) * (1 - test_proportion)):]
-test_targets = targets[int(len(targets) * (1 - test_proportion)):]
+
+train_dataset = TensorDataset(padded_inputs[:int(len(padded_inputs) * (1 - test_proportion))], 
+                              padded_targets[:int(len(padded_targets) * (1 - test_proportion))])
+test_dataset = TensorDataset(padded_inputs[int(len(padded_inputs) * (1 - test_proportion)):], 
+                             padded_targets[int(len(padded_targets) * (1 - test_proportion)):])
+
+batch_size = 64  # Adjust based on your GPU memory
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
 
 # Model
 probed_model = GPTWithLinearProbe(model, layer=4, num_classes=2)
@@ -186,13 +197,11 @@ optimizer = Adam(probed_model.parameters(), lr=0.001)
 # %%
 # Training loop
 def train_linear_probe():
-    epochs = 50
+    epochs =10
     for epoch in range(epochs):
         probed_model.train()
         total_loss = 0
-        for idx, (inputs, targets) in enumerate(zip(train_inputs, train_targets)):
-            inputs = inputs.unsqueeze(0)
-            targets = targets.unsqueeze(0)
+        for inputs, targets in train_loader:
             optimizer.zero_grad()
             outputs = probed_model(inputs)
             outputs = outputs.transpose(1, 2)
@@ -200,7 +209,7 @@ def train_linear_probe():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_inputs)}")
+        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_dataset)}")
 
 train_linear_probe()
 # %%
@@ -211,10 +220,10 @@ import numpy as np
 from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
 
 
-test_id = 0
-example = test_inputs[test_id]
-example_row = dataset[len(train_inputs) + test_id]
-example_target = test_targets[test_id]
+test_id = 2
+example, example_target = test_dataset[test_id]
+example_target = example_target.cpu()
+example_row = dataset[len(train_dataset) + test_id]
 hidden_states = probed_model.gpt(example.unsqueeze(0), return_hidden_states=True)
 last_hidden_state = hidden_states[5]
 
@@ -226,8 +235,10 @@ plt.show()
 
 maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
 # display_maze_with_markers(maze, directions, example_row["markers"])
-maze_token_length = len(example_row["maze"]) + 1 
-display_maze(maze, directions, signal=example_target[maze_token_length:].cpu().tolist())
+seperator = encode(";")[0]
+maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
+target_signal = example_target[maze_end+1:directions_end].cpu()
+display_maze(maze, directions, signal=list(target_signal))
 
 # %%
 from plotly.subplots import make_subplots
@@ -237,27 +248,24 @@ import plotly.graph_objects as go
 # Ensure the model is in evaluation mode
 probed_model.eval()
 
-# Select the example inputs and targets
-example_input = test_inputs[0]
-example_target = test_targets[0]
 
 # Get the model's predictions for this example
 with torch.no_grad():  # No need to track gradients here
-    example_logits = probed_model(example_input.unsqueeze(0)).squeeze(0)
+    example_logits = probed_model(example.unsqueeze(0)).squeeze(0)
     softmaxed = F.softmax(example_logits, dim=-1).cpu()
 
 junction = softmaxed[:, 1]
 not_junction = softmaxed[:, 0]
 
 # Generate x values representing each token position
-token_positions = list(range(example_input.size(0)))
+token_positions = list(range(example.size(0)))
 
 # Create the plot
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=token_positions, y=junction, mode='lines+markers',
                          name='Junction', marker=dict(size=5), line=dict(shape='spline')))
 # Ground truth
-fig.add_trace(go.Scatter(x=token_positions, y=example_target.cpu(), mode='lines+markers',
+fig.add_trace(go.Scatter(x=token_positions, y=example_target, mode='lines+markers',
                          name='Ground Truth', marker=dict(size=5), line=dict(shape='spline')))
 
 fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}',
@@ -266,7 +274,8 @@ fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}'
                     template='plotly_dark')
 fig.show()
 
-display_maze(maze, directions, signal=junction[maze_token_length:].cpu().tolist())
+result_signal = list(junction[maze_end+1:directions_end].cpu().tolist())
+display_maze(maze, directions, signal=result_signal)
 
 
 # %%
