@@ -132,10 +132,11 @@ x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 # %%
 import torch.nn as nn
 import json
-from mazegpt.utils import display_maze_with_markers, parse_maze
+from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 import torch.nn.functional as F
+import cProfile
 
 class GPTWithLinearProbe(nn.Module):
     def __init__(self, gpt_model, layer, num_classes):
@@ -143,63 +144,131 @@ class GPTWithLinearProbe(nn.Module):
         self.gpt = gpt_model
         self.layer = layer
         self.gpt.eval()  # Freeze the GPT model weights
-        self.linear_probe = nn.Linear(gpt_model.config.n_embd, num_classes)
+        self.linear_probe = nn.Linear(gpt_model.config.n_embd, num_classes).to(device)
     
     def forward(self, idx):
         hidden_states = self.gpt(idx, return_hidden_states=True)
-        last_hidden_state = hidden_states[self.layer :, :]  
-        logits = self.linear_probe(last_hidden_state)
+        hidden_state = hidden_states[self.layer]  
+        logits = self.linear_probe(hidden_state)
         return logits
 
 dataset_path = os.path.join(os.path.dirname(__file__), "data/mazes/data.jsonl")
-dataset = []
+
+num_samples_for_probe = 1000
 with open(dataset_path, "r") as f:
-    for line in f:
-        dataset.append(json.loads(line))
+    dataset = [json.loads(line) for line in f.readlines()[:num_samples_for_probe]]
 
-
-# maze, directions = parse_maze(serialized)
-# display_maze_with_markers(maze, directions, row["markers"])
-# print(serialized)
-# print(classes)
-
-inputs, targets = [], []
-for row in dataset:
+inputs = []
+targets = []
+for i, row in enumerate(dataset):
     serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
     tokens = torch.tensor(encode(serialized)).to(device)  # Ensure this is a tensor or convert it into one
     classes = torch.zeros(len(tokens), 2).to(device)
+    classes[:, 0] = 1
+    classes[:, 1] = 0
+
+    marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos in row["markers"]]
+    classes[marker_positions, 0] = 0
+    classes[marker_positions, 1] = 1
     
-    for marker, marker_pos in row["markers"]:
-        abs_pos = len(row["maze"] + ";") + marker_pos
-        classes[abs_pos] = torch.tensor([0, 1]).to(device)
+    inputs.append(tokens.to(device))
+    targets.append(classes.to(device))
 
-    # not sure how to set the other classes to [0,0]
-    inputs.append(tokens)
-    targets.append(classes)
 
-# Assuming inputs and targets are lists of tensors and can be concatenated
-inputs_tensor = [i.unsqueeze(0).to(device) for i in inputs]
-targets_tensor = [t.unsqueeze(0).to(device) for t in targets]
+test_proportion = 0.2
 
+train_inputs = inputs[:int(len(inputs) * (1 - test_proportion))]
+train_targets = targets[:int(len(targets) * (1 - test_proportion))]
+test_inputs = inputs[int(len(inputs) * (1 - test_proportion)):]
+test_targets = targets[int(len(targets) * (1 - test_proportion)):]
 
 # Model
-probed_model = GPTWithLinearProbe(model, layer=5, num_classes=2)  # Assuming binary classification
+probed_model = GPTWithLinearProbe(model, layer=0, num_classes=2)
 optimizer = Adam(probed_model.parameters(), lr=0.001)
 
+# %%
 # Training loop
-epochs = 10
-for epoch in range(epochs):
-    probed_model.train()
-    total_loss = 0
-    for idx, (inputs, targets) in enumerate(zip(inputs_tensor, targets_tensor)):
-        optimizer.zero_grad()
-        outputs = probed_model(inputs).squeeze(1)
-        outputs = outputs.to(device)
-        loss = F.cross_entropy(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    print(f"Epoch {epoch+1}, Loss: {total_loss/len(inputs_tensor)}")
+def train_linear_probe():
+    epochs = 50
+    for epoch in range(epochs):
+        probed_model.train()
+        total_loss = 0
+        for idx, (inputs, targets) in enumerate(zip(train_inputs, train_targets)):
+            inputs = inputs.unsqueeze(0)
+            targets = targets.unsqueeze(0)
+            optimizer.zero_grad()
+            outputs = probed_model(inputs)
+            loss = F.cross_entropy(outputs, targets)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_inputs)}")
+
+train_linear_probe()
+# %%
+# Plot the hidden state of an arbitrary input.
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
+
+
+test_id = 0
+example = test_inputs[test_id]
+example_row = dataset[len(train_inputs) + test_id]
+example_target = test_targets[test_id]
+hidden_states = probed_model.gpt(example.unsqueeze(0), return_hidden_states=True)
+last_hidden_state = hidden_states[5]
+
+sns.heatmap(last_hidden_state.squeeze(0).cpu().detach().numpy(), cmap='coolwarm')
+plt.title('Hidden State Heatmap')
+plt.xlabel('Embedding Dimension')
+plt.ylabel('Token Position')
+plt.show()
+
+maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
+# display_maze_with_markers(maze, directions, example_row["markers"])
+maze_token_length = len(example_row["maze"]) + 1 
+display_maze(maze, directions, signal=example_target[maze_token_length:, 1].cpu().tolist())
+
+# %%
+from plotly.subplots import make_subplots
+from plotly.graph_objects import Scatter
+import plotly.graph_objects as go
+
+# Ensure the model is in evaluation mode
+probed_model.eval()
+
+# Select the example inputs and targets
+example_input = inputs_list[0]
+example_target = targets_list[0]
+
+# Get the model's predictions for this example
+with torch.no_grad():  # No need to track gradients here
+    example_logits = probed_model(example_input).squeeze(0)
+    softmaxed = F.softmax(example_logits, dim=-1).cpu()
+
+junction = softmaxed[:, 1]
+not_junction = softmaxed[:, 0]
+
+# Generate x values representing each token position
+token_positions = list(range(example_input.size(1)))
+
+# Create the plot
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=token_positions, y=junction, mode='lines+markers',
+                         name='Junction', marker=dict(size=5), line=dict(shape='spline')))
+# Ground truth
+fig.add_trace(go.Scatter(x=token_positions, y=example_target[:, 1].cpu(), mode='lines+markers',
+                         name='Ground Truth', marker=dict(size=5), line=dict(shape='spline')))
+
+fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}',
+                    xaxis_title='Token Position',
+                    yaxis_title='Probability',
+                    template='plotly_dark')
+fig.show()
+
+display_maze(maze, directions, signal=junction[maze_token_length:].cpu().tolist())
 
 
 # %%

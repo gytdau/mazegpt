@@ -222,7 +222,7 @@ class GPT(nn.Module):
         
         if return_hidden_states:
             layers = len(self.transformer.h)
-            hidden_states = torch.zeros(layers, b, t, self.config.n_embd)
+            hidden_states = torch.zeros(layers, b, t, self.config.n_embd, device=device)
             x = self.transformer.drop(tok_emb + pos_emb)
             for i, block in enumerate(self.transformer.h):
                 hidden_states[i] = x

@@ -14,6 +14,9 @@ torch = "2.0.0"
 tiktoken = "^0.4.0"
 wandb = "^0.15.9"
 gytis = { path = "../gytis-tools/", develop = false }
+matplotlib = "^3.8.4"
+seaborn = "^0.13.2"
+plotly = "^5.20.0"
 
 
 [tool.poetry.group.dev.dependencies]

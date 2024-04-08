@@ -4,7 +4,7 @@ import os
 from typing import List, Tuple
 import random
 from gytis import imports
-from mazegpt.utils import Tile, display_maze, display_maze_with_markers
+from mazegpt.utils import Tile, display_maze, display_maze_with_markers, serialize_sample
 
 
 
@@ -52,6 +52,7 @@ def generate_maze(n: int) -> List[List[Tile]]:
             break
 
     return maze
+
 
 
 # Example usage
@@ -145,6 +146,7 @@ print("Path from start to end:")
 print(directions)
 print("Junction steps:")
 print(junction_steps)
+print(serialize_sample(maze, directions))
 display_maze_with_markers(maze, directions, junction_steps)
 
 
@@ -154,7 +156,7 @@ import tqdm
 # Assume your functions are defined here
 
 def main():
-    quantity = 1_000 #_000
+    quantity = 1_000_000
 
     file_path = os.path.join(os.path.dirname(__file__), "data.jsonl")
     with open(file_path, 'a') as file:
