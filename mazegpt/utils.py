@@ -1,6 +1,6 @@
 from enum import Enum
 import html
-from typing import List
+from typing import List, Tuple
 
 from IPython.display import display, HTML
 
@@ -19,7 +19,7 @@ class Tile(Enum):
     NEW_LINE = "\n"
 
 
-def display_maze(maze: List[List[Tile]], directions: str = None) -> str:
+def display_maze(maze: List[List[Tile]], directions: str = None) -> None:
     start_pos = next(((i, j) for i, row in enumerate(maze) for j, tile in enumerate(row) if tile == Tile.START), None)
     if not start_pos:
         return "Start position not found."
@@ -67,18 +67,21 @@ def display_maze(maze: List[List[Tile]], directions: str = None) -> str:
 
     display(HTML(html_str))
 
+def display_maze_with_markers(maze: List[List[Tile]], directions: str = None, markers: List[int] = None) -> None:
+    for marker, marker_pos in markers:
+        print("At marker", marker, "at position", marker_pos)
+        truncated_directions = directions[:marker_pos]
+        display_maze(maze, truncated_directions)
+    
+    print("Full path")
+    display_maze(maze, directions)
 
 def parse_directions(output: str) -> List[str]:
     return output
 
 
-def parse_maze(output: str) -> List[List[Tile]]:
-    # find first capital letter
-    first_capital_letter = next((c for c in output if c.isupper()), None)
-    # find the index of the first capital letter
-    first_capital_index = output.index(first_capital_letter)
-    # split the output at the first capital letter
-    maze_output, directions_output = output[:first_capital_index], output[first_capital_index:]
-    parsed_maze = [[Tile(c) for c in row] for row in maze_output.split("\n")]
-    parsed_directions = parse_directions(directions_output)
-    return parsed_maze, parsed_directions
+def parse_maze(output: str) -> Tuple[List[List[Tile]], List[str]]:
+    maze, directions = output.split(";")
+    maze = maze.split("\n")
+    return maze, directions
+
