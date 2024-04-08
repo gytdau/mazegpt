@@ -11,6 +11,12 @@ class Tile(Enum):
     START = "s"
     END = "e"
     PATH = "."
+    SEPERATOR = ";"
+    SOUTH = "S"
+    NORTH = "N"
+    EAST = "E"
+    WEST = "W"
+    NEW_LINE = "\n"
 
 
 def display_maze(maze: List[List[Tile]], directions: str = None) -> str:

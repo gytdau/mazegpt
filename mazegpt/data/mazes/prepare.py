@@ -3,11 +3,11 @@ import numpy as np
 import os
 import pickle
 import json
-
+from mazegpt.utils import Tile
 # Assign ints for all
 stoi = {}
 
-new_tokens = ["#", " ", "s", "e", "N", "E", "S", "W", "\n"]
+new_tokens = [tile.value for tile in Tile]
 for token in new_tokens:
     stoi[token] = len(stoi)
 
@@ -24,7 +24,7 @@ def encode(data):
         directions = line["directions"]
 
         serialized_line = maze
-        serialized_line += " " + directions + "\n"
+        serialized_line += Tile.SEPERATOR.value + directions + Tile.SEPERATOR.value + Tile.NEW_LINE.value
 
         for char in serialized_line:
             tokens.append(stoi[char])
