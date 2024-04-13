@@ -18,6 +18,12 @@ class Tile(Enum):
     WEST = "W"
     NEW_LINE = "\n"
 
+class Markers(Enum):
+    DECISION = "decision"
+    MISTAKE = "mistake"
+    NON_MISTAKE = "non_mistake"
+    CORRECTION = "correction"
+
 
 def interpolate_white_to_blue(p):
     """
@@ -48,17 +54,17 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
     path_positions = [(start_pos, None)]  # List of positions (x, y) visited with directions
 
     direction_mapping = {
-        "E": (0, 1),
-        "W": (0, -1),
-        "N": (-1, 0),
-        "S": (1, 0)
+        Tile.EAST.value: (0, 1),
+        Tile.WEST.value: (0, -1),
+        Tile.NORTH.value: (-1, 0),
+        Tile.SOUTH.value: (1, 0)
     }
 
     direction_arrows = {
-        "E": "→",
-        "W": "←",
-        "N": "↑",
-        "S": "↓"
+        Tile.EAST.value: "→",
+        Tile.WEST.value: "←",
+        Tile.NORTH.value: "↑",
+        Tile.SOUTH.value: "↓"
     }
 
     if directions:

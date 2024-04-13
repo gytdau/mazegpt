@@ -128,7 +128,7 @@ x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 #             print("---------------")
 # %% [markdown]
 # ## Linear Probes
-# We're training a probe to predict whether the current move is a junction.
+# We're training a probe to predict whether the current move is a decision.
 # %%
 import torch.nn as nn
 import json
@@ -155,7 +155,7 @@ class GPTWithLinearProbe(nn.Module):
 
 dataset_path = os.path.join(os.path.dirname(__file__), "data/mazes/data.jsonl")
 
-num_samples_for_probe = 1000
+num_samples_for_probe = 10000
 with open(dataset_path, "r") as f:
     dataset = [json.loads(line) for line in f.readlines()[:num_samples_for_probe]]
 
@@ -197,7 +197,7 @@ optimizer = Adam(probed_model.parameters(), lr=0.001)
 # %%
 # Training loop
 def train_linear_probe():
-    epochs =10
+    epochs = 1
     for epoch in range(epochs):
         probed_model.train()
         total_loss = 0
@@ -219,28 +219,6 @@ import seaborn as sns
 import numpy as np
 from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
 
-
-test_id = 2
-example, example_target = test_dataset[test_id]
-example_target = example_target.cpu()
-example_row = dataset[len(train_dataset) + test_id]
-hidden_states = probed_model.gpt(example.unsqueeze(0), return_hidden_states=True)
-last_hidden_state = hidden_states[5]
-
-sns.heatmap(last_hidden_state.squeeze(0).cpu().detach().numpy(), cmap='coolwarm')
-plt.title('Hidden State Heatmap')
-plt.xlabel('Embedding Dimension')
-plt.ylabel('Token Position')
-plt.show()
-
-maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
-# display_maze_with_markers(maze, directions, example_row["markers"])
-seperator = encode(";")[0]
-maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
-target_signal = example_target[maze_end+1:directions_end].cpu()
-display_maze(maze, directions, signal=list(target_signal))
-
-# %%
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
 import plotly.graph_objects as go
@@ -248,22 +226,34 @@ import plotly.graph_objects as go
 # Ensure the model is in evaluation mode
 probed_model.eval()
 
+test_id = 5
+example, example_target = test_dataset[test_id]
+example_target = example_target.cpu()
+example_row = dataset[len(train_dataset) + test_id]
+
+maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
+seperator = encode(";")[0]
+maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
+target_signal = example_target[maze_end+1:directions_end].cpu()
+display_maze(maze, directions, signal=list(target_signal))
+
+
 
 # Get the model's predictions for this example
 with torch.no_grad():  # No need to track gradients here
     example_logits = probed_model(example.unsqueeze(0)).squeeze(0)
     softmaxed = F.softmax(example_logits, dim=-1).cpu()
 
-junction = softmaxed[:, 1]
-not_junction = softmaxed[:, 0]
+decision = softmaxed[:, 1]
+not_decision = softmaxed[:, 0]
 
 # Generate x values representing each token position
 token_positions = list(range(example.size(0)))
 
 # Create the plot
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=token_positions, y=junction, mode='lines+markers',
-                         name='Junction', marker=dict(size=5), line=dict(shape='spline')))
+fig.add_trace(go.Scatter(x=token_positions, y=decision, mode='lines+markers',
+                         name='decision', marker=dict(size=5), line=dict(shape='spline')))
 # Ground truth
 fig.add_trace(go.Scatter(x=token_positions, y=example_target, mode='lines+markers',
                          name='Ground Truth', marker=dict(size=5), line=dict(shape='spline')))
@@ -274,7 +264,7 @@ fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}'
                     template='plotly_dark')
 fig.show()
 
-result_signal = list(junction[maze_end+1:directions_end].cpu().tolist())
+result_signal = list(decision[maze_end+1:directions_end].cpu().tolist())
 display_maze(maze, directions, signal=result_signal)
 
 
