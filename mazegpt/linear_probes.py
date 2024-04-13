@@ -159,23 +159,23 @@ num_samples_for_probe = 10000
 with open(dataset_path, "r") as f:
     dataset = [json.loads(line) for line in f.readlines()[:num_samples_for_probe]]
 
+marker_target = "decision"
 inputs = []
 targets = []
 for i, row in enumerate(dataset):
     serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
-    tokens = torch.tensor(encode(serialized)).to(device)  # Ensure this is a tensor or convert it into one
-    classes = torch.zeros(len(tokens), dtype=torch.long).to(device)
+    tokens = torch.tensor(encode(serialized))  # Ensure this is a tensor or convert it into one
+    classes = torch.zeros(len(tokens), dtype=torch.long)
 
-    marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos in row["markers"]]
+    marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos in row["markers"] if marker == marker_target]
     classes[marker_positions] = 1
     
-    inputs.append(tokens.to(device))
-    targets.append(classes.to(device))
+    inputs.append(tokens)
+    targets.append(classes)
 
 
-# Assume 'inputs' is a list of 1D tensors of variable lengths
-padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0)  # Pad with zero
-padded_targets = pad_sequence(targets, batch_first=True, padding_value=0)  # Choose appropriate padding_value for targets
+padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0).to(device)
+padded_targets = pad_sequence(targets, batch_first=True, padding_value=0).to(device) 
 
 test_proportion = 0.2
 
@@ -189,12 +189,29 @@ batch_size = 64  # Adjust based on your GPU memory
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
+# %% [markdown]
+# ## Example target
+test_id = 4
+example, example_target = test_dataset[test_id]
+example_target = example_target.cpu()
+example_row = dataset[len(train_dataset) + test_id]
+
+maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
+seperator = encode(";")[0]
+maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
+target_signal = example_target[maze_end+1:directions_end].cpu()
+display_maze(maze, directions, signal=list(target_signal))
+
+
+
+# %%
 
 # Model
 probed_model = GPTWithLinearProbe(model, layer=4, num_classes=2)
 optimizer = Adam(probed_model.parameters(), lr=0.001)
 
 # %%
+
 # Training loop
 def train_linear_probe():
     epochs = 1
@@ -209,7 +226,18 @@ def train_linear_probe():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_dataset)}")
+        
+        # Estimate on test set
+        probed_model.eval()
+        test_loss = 0
+        with torch.no_grad():
+            for inputs, targets in test_loader:
+                outputs = probed_model(inputs)
+                outputs = outputs.transpose(1, 2)
+                loss = F.cross_entropy(outputs, targets)
+                test_loss += loss.item()
+        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_dataset)}, Test Loss: {test_loss/len(test_dataset)}")
+    
 
 train_linear_probe()
 # %%
@@ -226,18 +254,11 @@ import plotly.graph_objects as go
 # Ensure the model is in evaluation mode
 probed_model.eval()
 
-test_id = 5
+
+test_id = 4
 example, example_target = test_dataset[test_id]
 example_target = example_target.cpu()
 example_row = dataset[len(train_dataset) + test_id]
-
-maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
-seperator = encode(";")[0]
-maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
-target_signal = example_target[maze_end+1:directions_end].cpu()
-display_maze(maze, directions, signal=list(target_signal))
-
-
 
 # Get the model's predictions for this example
 with torch.no_grad():  # No need to track gradients here
