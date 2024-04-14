@@ -11,9 +11,6 @@ from gytis import imports
 from mazegpt.model import GPTConfig, GPT
 from mazegpt.sample import model
 
-# %% [markdown]
-# ## Linear Probes
-# We're training a probe to predict whether the current move is a marker_predicted.
 # %%
 import torch.nn as nn
 import json
@@ -98,6 +95,24 @@ class GPTWithLinearProbe(nn.Module):
         logits = self.probe_layers(hidden_state)
         return logits
 
+
+class GPTWithSteeringVector(nn.Module):
+    def __init__(self, gpt_model, layer, num_classes):
+        super().__init__()
+        self.gpt = gpt_model
+        self.layer = layer
+        self.gpt.eval()  # Freeze the GPT model weights
+        self.probe_layers = nn.Sequential(
+            nn.Linear(gpt_model.config.n_embd, num_classes),
+        )
+    
+    def forward(self, idx):
+        steering_vector = torch.zeros(self.gpt.config.n_layer, self.gpt.config.n_embd).to(device)
+        steering_vector[self.layer] = self.probe_layers[0].weight
+        hidden_states = self.gpt(idx, return_hidden_states=True, add_activations=steering_vector)
+        return logits
+
+
 ProbeModel = GPTWithLinearProbe
 
 
@@ -111,7 +126,7 @@ def train_model_at_layer(layer):
     print(f"Training probe at layer {layer}")
     probed_model = ProbeModel(model, layer=layer, num_classes=2).to(device)
     optimizer = Adam(probed_model.probe_layers.parameters(), lr=0.001)
-    EPOCHS = 10
+    EPOCHS = 3
     # Training loop
     def train_linear_probe():
         for epoch in range(EPOCHS):
@@ -256,7 +271,7 @@ def display_logits(logits_a, logits_b,):
 # Add the probe's vector to the residual stream
 # new tensor
 steering_vector = torch.zeros(model.config.n_layer, model.config.n_embd).to(device)
-steering_vector[5] = probe.probe_layers[0].weight[0] * -40#+ probe.probe_layers[0].weight[1]
+steering_vector[5] = probe.probe_layers[0].weight[0] * 400#+ probe.probe_layers[0].weight[1]
 
 with torch.no_grad():  
     steered_logits, _ = model(example_trimmed.unsqueeze(0), add_activations=steering_vector)

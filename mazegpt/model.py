@@ -208,7 +208,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None, return_hidden_states=False):
+    def forward(self, idx, targets=None, return_hidden_states=False, add_activations=None):
         device = idx.device
         b, t = idx.size()
         assert (
@@ -230,8 +230,10 @@ class GPT(nn.Module):
             return hidden_states
 
         x = self.transformer.drop(tok_emb + pos_emb)
-        for block in self.transformer.h:
+        for layer, block in enumerate(self.transformer.h):
             x = block(x)
+            if add_activations is not None:
+                x = x + add_activations[layer]
         x = self.transformer.ln_f(x)
 
         if targets is not None:

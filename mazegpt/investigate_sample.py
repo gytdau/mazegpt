@@ -2,7 +2,7 @@
 
 # %%
 from gytis import imports
-
+from mazegpt.sample import model
 
 # %%
 
@@ -23,11 +23,25 @@ from mazegpt.utils import display_maze, parse_maze
 # ##############;EESSWWSSEESSSSWWN;
 # """
 
-output="""s#   
- ### 
-     
-#### 
-    e;SSEEEENNEESSSS;
+output="""s  #     #       # 
+## # ### # ### # # 
+ # # # # #   # # # 
+ # # # # ### # # # 
+ #   #   #   # #   
+ ##### ####### ####
+ #     #     #     
+ # ####### # # ### 
+ #       # # # #   
+ ####### # # ### # 
+   #   #   # #   # 
+ # ### ##### # ### 
+ #         #   # # 
+ ############### # 
+       #         # 
+ ##### # ##### # # 
+ #   # # # #   # # 
+ ### # # # # ##### 
+     #     #      e;EESSSSEENNNNEEEESSSSWWNSSSWWWWSSEEEEEESSEENNNNEESSSSSSEENNEESSSSSS;
 """
 
 # output = """s  #         #
@@ -47,7 +61,5 @@ output="""s#
 # """
 maze, directions = parse_maze(output)
 display_maze(maze, directions)
-
-# %%
 
 # %%
