@@ -32,8 +32,8 @@ def encode(data):
     return tokens
 
 
-def convert_log():
-    with open("data.jsonl", "r") as f:
+def convert_log(dataset_path):
+    with open(f"{dataset_path}/data.jsonl", "r") as f:
         encoded = encode(f.readlines())
 
         train = encoded[: int(len(encoded) * 0.9)]
@@ -41,8 +41,8 @@ def convert_log():
 
         train_ids = np.array(train, dtype=np.uint16)
         val_ids = np.array(val, dtype=np.uint16)
-        train_ids.tofile(os.path.join(os.path.dirname(__file__), "train.bin"))
-        val_ids.tofile(os.path.join(os.path.dirname(__file__), "val.bin"))
+        train_ids.tofile(f"{dataset_path}/train.bin")
+        val_ids.tofile(f"{dataset_path}/val.bin")
 
     # save the meta information as well, to help us encode/decode later
     meta = {
@@ -51,11 +51,12 @@ def convert_log():
         "stoi": stoi,
     }
 
-    with open(os.path.join(os.path.dirname(__file__), "meta.pkl"), "wb") as f:
+    with open(f"{dataset_path}/meta.pkl", "wb") as f:
         pickle.dump(meta, f)
 
 
 if __name__ == "__main__":
-    convert_log()
+    convert_log(os.path.join(os.path.dirname(__file__), "oracle"))
+    convert_log(os.path.join(os.path.dirname(__file__), "correctable"))
 
 # %%

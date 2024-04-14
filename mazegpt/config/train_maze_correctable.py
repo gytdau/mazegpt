@@ -2,7 +2,7 @@
 # good for debugging and playing on macbooks and such
 import datetime
 
-out_dir = "out-mazes"
+out_dir = "out-mazes-correctable"
 eval_interval = 500  # keep frequent because we'll overfit
 eval_iters = 200
 log_interval = 100  # don't print too too often
@@ -13,7 +13,7 @@ always_save_checkpoint = False
 wandb_project = "mazes"
 wandb_run_name = "mini-gpt" + datetime.datetime.now().strftime("-%Y-%m-%d-%H-%M-%S")
 
-dataset = "mazes"
+dataset = "mazes/correctable"
 gradient_accumulation_steps = 1
 batch_size = 64
 block_size = 512  # context of up to 512 previous characters

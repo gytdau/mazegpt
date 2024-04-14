@@ -9,12 +9,12 @@ from mazegpt.utils import Markers, Tile, display_maze, display_maze_with_markers
 
 
 def generate_maze() -> List[List[Tile]]:
-    n = random.randint(3, 18)
+    n = random.randint(4, 9)
     # Initialize maze with all walls
     maze = [[Tile.WALL for _ in range(n)] for _ in range(n)]
 
     # Starting point
-    start = (0, 0)
+    start = (random.randint(0, n-1), random.randint(0, n-1))
     maze[start[0]][start[1]] = Tile.START
     stack = [start]
 
@@ -42,16 +42,9 @@ def generate_maze() -> List[List[Tile]]:
             stack.pop()
 
     # Set an end point
-    end_found = False
-    for row in range(n-1, 0, -1):
-        for col in range(n-1, 0, -1):
-            if maze[row][col] == Tile.EMPTY:
-                maze[row][col] = Tile.END
-                end_found = True
-                break
-        if end_found:
-            break
-
+    empty_cells = [(row, col) for row in range(n) for col in range(n) if maze[row][col] == Tile.EMPTY]
+    end_cell = random.choice(empty_cells)
+    maze[end_cell[0]][end_cell[1]] = Tile.END
     return maze
 
 
@@ -71,10 +64,10 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     n = len(maze)
     # Directions: up, right, down, left
     move_directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-    visited = [[False for _ in range(n)] for _ in range(n)]
+    visited = set()
     distance = [[0 for _ in range(n)] for _ in range(n)]
     prev = [[None for _ in range(n)] for _ in range(n)]
-    decision_point = [[False for _ in range(n)] for _ in range(n)]
+    decision_point = set()
 
     # Find start
     start = end = None
@@ -88,7 +81,7 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     assert start and end, "No start or end"
 
     queue = deque([start])
-    visited[start[0]][start[1]] = True
+    visited.add(start)
 
     # BFS
     while queue:
@@ -99,15 +92,15 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
         possible_paths = 0
         for dx, dy in move_directions:
             nx, ny = x + dx, y + dy
-            if 0 <= nx < n and 0 <= ny < n and not visited[nx][ny] and maze[nx][ny] != Tile.WALL:
+            if 0 <= nx < n and 0 <= ny < n and (nx, ny) not in visited and maze[nx][ny] != Tile.WALL:
                 queue.append((nx, ny))
-                visited[nx][ny] = True
+                visited.add((nx, ny))
                 prev[nx][ny] = (x, y)
                 distance[nx][ny] = distance[x][y] + 1
                 possible_paths += 1
         
         if possible_paths > 1:
-            decision_point[x][y] = True
+            decision_point.add((x, y))
 
     # Reconstruct path
     path = []
@@ -138,10 +131,10 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
 
         directions.append(get_direction(dx, dy))
 
-        if decision_point[x][y]:
+        if (x, y) in decision_point:
             markers.append((Markers.DECISION.value, len(directions)))
                 
-        if decision_point[x][y]:
+        if (x, y) in decision_point:
             if random.random() < MISTAKE_PROBABILITY:
                 other_possible_paths = []
 
@@ -168,13 +161,8 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     return directions, markers
 
 
-# Example usage
+maze = generate_maze()
 directions, decision_steps = find_shortest_path_with_directions(maze)
-print('---')
-print("Path from start to end:")
-print(directions)
-print("decision steps:")
-print(decision_steps)
 print(serialize_sample(maze, directions))
 display_maze_with_markers(maze, directions, decision_steps)
 
@@ -187,7 +175,9 @@ import tqdm
 def main():
     quantity = 1_000_000
 
-    file_path = os.path.join(os.path.dirname(__file__), "data.jsonl")
+    file_path = os.path.join(os.path.dirname(__file__), "correctable/data.jsonl")
+    if os.path.exists(file_path):
+        os.remove(file_path)
     with open(file_path, 'a') as file:
         for _ in tqdm.tqdm(range(quantity)):
             maze = generate_maze()
