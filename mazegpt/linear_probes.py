@@ -98,37 +98,10 @@ else:
     encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
     decode = lambda l: enc.decode(l)
 
-# %%
-start = """###############
-#s  #         #
-### ### # #####
-# #   # #     #
-# ### ##### # #
-#     #   # #
-# ##### # ### #
-#       # #   #
-######### # # #
-#       #   # #
-# ### ####### #
-#   #       # #
-### ####### # #
-#         #  e#
-###############"""
 
-# encode the beginning of the prompt
-start_ids = encode(start)
-x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
-
-# # run generation
-# with torch.no_grad():
-#     with ctx:
-#         for k in range(num_samples):
-#             y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-#             print(decode(y[0].tolist()))
-#             print("---------------")
 # %% [markdown]
 # ## Linear Probes
-# We're training a probe to predict whether the current move is a decision.
+# We're training a probe to predict whether the current move is a marker_predicted.
 # %%
 import torch.nn as nn
 import json
@@ -137,29 +110,14 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
-import cProfile
-
-class GPTWithLinearProbe(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.linear_probe = nn.Linear(gpt_model.config.n_embd, num_classes).to(device)
-    
-    def forward(self, idx):
-        hidden_states = self.gpt(idx, return_hidden_states=True)
-        hidden_state = hidden_states[self.layer]  
-        logits = self.linear_probe(hidden_state)
-        return logits
 
 dataset_path = os.path.join(os.path.dirname(__file__), "data/mazes/data.jsonl")
 
-num_samples_for_probe = 10000
+num_samples_for_probe = 50_000
 with open(dataset_path, "r") as f:
     dataset = [json.loads(line) for line in f.readlines()[:num_samples_for_probe]]
 
-marker_target = "decision"
+marker_target = "mistake"
 inputs = []
 targets = []
 for i, row in enumerate(dataset):
@@ -189,57 +147,91 @@ batch_size = 64  # Adjust based on your GPU memory
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# %% [markdown]
-# ## Example target
-test_id = 4
-example, example_target = test_dataset[test_id]
-example_target = example_target.cpu()
-example_row = dataset[len(train_dataset) + test_id]
+# %%
 
-maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
-seperator = encode(";")[0]
-maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
-target_signal = example_target[maze_end+1:directions_end].cpu()
-display_maze(maze, directions, signal=list(target_signal))
+class GPTWithProbe(nn.Module):
+    def __init__(self, gpt_model, layer, num_classes):
+        super().__init__()
+        self.gpt = gpt_model
+        self.layer = layer
+        self.gpt.eval()  # Freeze the GPT model weights
+        self.probe_layers = nn.Sequential(
+            nn.Linear(gpt_model.config.n_embd, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, num_classes)
+        )
+    
+    def forward(self, idx):
+        hidden_states = self.gpt(idx, return_hidden_states=True)
+        hidden_state = hidden_states[self.layer]  
+        logits = self.probe_layers(hidden_state)
+        return logits
+
+
+class GPTWithLinearProbe(nn.Module):
+    def __init__(self, gpt_model, layer, num_classes):
+        super().__init__()
+        self.gpt = gpt_model
+        self.layer = layer
+        self.gpt.eval()  # Freeze the GPT model weights
+        self.probe_layers = nn.Sequential(
+            nn.Linear(gpt_model.config.n_embd, num_classes),
+        )
+    
+    def forward(self, idx):
+        hidden_states = self.gpt(idx, return_hidden_states=True)
+        hidden_state = hidden_states[self.layer]  
+        logits = self.probe_layers(hidden_state)
+        return logits
+
+ProbeModel = GPTWithLinearProbe
 
 
 
 # %%
 
-# Model
-probed_model = GPTWithLinearProbe(model, layer=4, num_classes=2)
-optimizer = Adam(probed_model.parameters(), lr=0.001)
+from tqdm import tqdm
 
-# %%
-
-# Training loop
-def train_linear_probe():
-    epochs = 1
-    for epoch in range(epochs):
-        probed_model.train()
-        total_loss = 0
-        for inputs, targets in train_loader:
-            optimizer.zero_grad()
-            outputs = probed_model(inputs)
-            outputs = outputs.transpose(1, 2)
-            loss = F.cross_entropy(outputs, targets)
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-        
-        # Estimate on test set
-        probed_model.eval()
-        test_loss = 0
-        with torch.no_grad():
-            for inputs, targets in test_loader:
+def train_model_at_layer(layer):
+    print("---")
+    print(f"Training probe at layer {layer}")
+    probed_model = ProbeModel(model, layer=layer, num_classes=2).to(device)
+    optimizer = Adam(probed_model.probe_layers.parameters(), lr=0.001)
+    EPOCHS = 3
+    # Training loop
+    def train_linear_probe():
+        for epoch in range(EPOCHS):
+            probed_model.probe_layers.train()
+            total_loss = 0
+            for inputs, targets in tqdm(train_loader):
+                optimizer.zero_grad()
                 outputs = probed_model(inputs)
                 outputs = outputs.transpose(1, 2)
                 loss = F.cross_entropy(outputs, targets)
-                test_loss += loss.item()
-        print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_dataset)}, Test Loss: {test_loss/len(test_dataset)}")
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+            
+            # Estimate on test set
+            probed_model.probe_layers.eval()
+            test_loss = 0
+            with torch.no_grad():
+                for inputs, targets in test_loader:
+                    outputs = probed_model(inputs)
+                    outputs = outputs.transpose(1, 2)
+                    loss = F.cross_entropy(outputs, targets)
+                    test_loss += loss.item()
+            print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader)}, Test Loss: {test_loss/len(test_loader)}")
     
+    train_linear_probe()
+    
+    return probed_model
 
-train_linear_probe()
+probes = []
+for layer in [5]:
+    probes.append([layer, train_model_at_layer(layer)])
 # %%
 # Plot the hidden state of an arbitrary input.
 import matplotlib.pyplot as plt
@@ -252,41 +244,78 @@ from plotly.graph_objects import Scatter
 import plotly.graph_objects as go
 
 # Ensure the model is in evaluation mode
-probed_model.eval()
 
 
-test_id = 4
+def test_for_target(probed_model, target, layer_id):
+    for test_id in range(5):
+        example, example_target = test_dataset[test_id]
+        example_target = example_target.cpu()
+        example_row = dataset[len(train_dataset) + test_id]
+
+        # Get the model's predictions for this example
+        with torch.no_grad():  # No need to track gradients here
+            example_logits = probed_model(example.unsqueeze(0)).squeeze(0)
+            softmaxed = F.softmax(example_logits, dim=-1).cpu()
+
+        token_positions = list(range(example.size(0)))
+
+        maze, directions = parse_maze(example_row["maze"] + ";" + "".join(example_row["directions"]) + ";\n")
+        seperator = encode(";")[0]
+        maze_end, directions_end = [v.item() for v in (example == seperator).nonzero()]
+
+        marker_predicted = softmaxed[:, 1]
+        not_marker_predicted = softmaxed[:, 0]
+        result_signal = list(marker_predicted[maze_end+1:directions_end].cpu().tolist())
+
+        # Generate x values representing each token position
+
+
+        # Create the plot
+        fig = make_subplots(rows=2, cols=1, subplot_titles=(f'{target}', 'Ground Truth'), 
+                            vertical_spacing=0.1, shared_xaxes=True)
+
+        fig.add_trace(go.Scatter(x=token_positions, y=marker_predicted, mode='lines+markers',
+                                name=target, marker=dict(size=5)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=token_positions, y=example_target, mode='lines+markers',
+                                name='Ground Truth', marker=dict(size=5)), row=2, col=1)
+
+        fig.update_layout(title=f'L{layer_id} - `{target}` on Example {test_id}',
+                            xaxis_title='Token Position',
+                            yaxis_title='Probability',
+                            template='plotly_dark')
+
+        # Ensure y-axis scale is always 0-1 for both subplots
+        fig.update_yaxes(range=[0, 1], row=1, col=1)
+        fig.update_yaxes(range=[0, 1], row=2, col=1)
+        fig.show()
+
+        display_maze(maze, directions, signal=result_signal)
+
+
+for (layer, probe) in probes:
+    probe.eval()
+    test_for_target(probe, marker_target, layer)
+# %%
+
+test_id = 2
+probe_id = 0
+token_id = 151
+
+# Print logits for this token
+# layer, probe = probes[0]
 example, example_target = test_dataset[test_id]
-example_target = example_target.cpu()
 example_row = dataset[len(train_dataset) + test_id]
+# only first tokens
+example_trimmed = example[:token_id]
 
-# Get the model's predictions for this example
-with torch.no_grad():  # No need to track gradients here
-    example_logits = probed_model(example.unsqueeze(0)).squeeze(0)
+with torch.no_grad():  
+    example_logits, _ = model(example_trimmed.unsqueeze(0))
+    example_logits = example_logits.squeeze(0).squeeze(0)
+    # softmax
     softmaxed = F.softmax(example_logits, dim=-1).cpu()
 
-decision = softmaxed[:, 1]
-not_decision = softmaxed[:, 0]
-
-# Generate x values representing each token position
-token_positions = list(range(example.size(0)))
-
-# Create the plot
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=token_positions, y=decision, mode='lines+markers',
-                         name='decision', marker=dict(size=5), line=dict(shape='spline')))
-# Ground truth
-fig.add_trace(go.Scatter(x=token_positions, y=example_target, mode='lines+markers',
-                         name='Ground Truth', marker=dict(size=5), line=dict(shape='spline')))
-
-fig.update_layout(title=f'Signal from Linear Probe for Class {1} on Example {0}',
-                    xaxis_title='Token Position',
-                    yaxis_title='Probability',
-                    template='plotly_dark')
-fig.show()
-
-result_signal = list(decision[maze_end+1:directions_end].cpu().tolist())
-display_maze(maze, directions, signal=result_signal)
-
+print(decode(example_trimmed.tolist()))
+for token_idx, decoded in itos.items():
+    print(repr(decoded), f"{softmaxed[token_idx].item():.2f}")
 
 # %%
