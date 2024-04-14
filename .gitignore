@@ -12,3 +12,4 @@ input.txt
 *.jsonl
 venv/
 wandb/
+mazegpt/data/addition/data.txt
