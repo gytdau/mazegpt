@@ -19,7 +19,7 @@ def generate_sum(digits: int) -> Tuple[str, str]:
 def insert_spaces(sum: Tuple[str, str]) -> str:
     question, answer = sum
     spaces = "   "
-    return question + answer + spaces
+    return question + spaces + answer
 
 
 # %%

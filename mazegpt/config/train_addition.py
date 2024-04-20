@@ -24,6 +24,13 @@ n_head = 6
 n_embd = 384
 dropout = 0.2
 
+wandb_log = True
+wandb_project = 'addition'
+wandb_run_name='addition-spaces-before'
+
+dataset = "addition"
+out_dir = "addition"
+
 learning_rate = 1e-3  # with baby networks can afford to go a bit higher
 max_iters = 6000
 lr_decay_iters = 6000  # make equal to max_iters usually
