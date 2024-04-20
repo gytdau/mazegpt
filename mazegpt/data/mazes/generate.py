@@ -132,7 +132,7 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
         directions.append(get_direction(dx, dy))
 
         if (x, y) in decision_point:
-            markers.append((Markers.DECISION.value, len(directions)))
+            markers.append((Markers.DECISION.value, len(directions), None))
                 
         if (x, y) in decision_point:
             if random.random() < MISTAKE_PROBABILITY:
@@ -147,14 +147,17 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
                 dx = new_choice_x - x
                 dy = new_choice_y - y
 
-                directions.append(get_direction(dx, dy))
-                markers.append((Markers.MISTAKE.value, len(directions)))
-                directions.append(get_direction(-dx, -dy))
-                markers.append((Markers.CORRECTION.value, len(directions)))
+                mistake_move = get_direction(dx, dy)
+                mistake_correction_move = get_direction(-dx, -dy)
+
+                directions.append(mistake_move)
+                markers.append((Markers.MISTAKE.value, len(directions), mistake_correction_move))
+                directions.append(mistake_correction_move)
+                markers.append((Markers.CORRECTION.value, len(directions), None))
                 # todo: maybe this is also a decision again?
             else:
                 # todo: maybe it sees this as a deicison again?
-                markers.append((Markers.NON_MISTAKE.value, len(directions)+1))
+                markers.append((Markers.NON_MISTAKE.value, len(directions)+1, None))
 
     
 

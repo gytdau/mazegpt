@@ -84,7 +84,8 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
         for j, tile in enumerate(row):
             cell_style = 'background-color: {};'.format("lightgreen" if (i, j) == start_pos else "lightgray" if tile == Tile.WALL else "tomato" if tile == Tile.END else "white")
             cell_content = ""
-            for path_i, (pos, dir) in enumerate(path_positions):
+            for path_i in range(len(path_positions)):
+                pos, dir = path_positions[path_i]
                 if (i, j) == pos and dir:
                     cell_content += direction_arrows[dir]
                     if signal and path_i < len(signal):

@@ -28,16 +28,30 @@ with open(dataset_path, "r") as f:
 MARKER_TARGET = "mistake"
 inputs = []
 targets = []
-for i, row in enumerate(dataset):
-    serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
-    tokens = torch.tensor(encode(serialized))  # Ensure this is a tensor or convert it into one
-    classes = torch.zeros(len(tokens), dtype=torch.long)
+i = 2
+row = dataset[i]
 
-    marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos, _ in row["markers"] if marker == MARKER_TARGET]
-    classes[marker_positions] = 1
-    
-    inputs.append(tokens)
-    targets.append(classes)
+maze = row["maze"]
+directions = row["directions"]
+markers = row["markers"]
+serialized = maze + ";" + directions + ";\n"
+tokens = torch.tensor(encode(serialized))  # Ensure this is a tensor or convert it into one
+with torch.no_grad():
+    target_logits = model(tokens.unsqueeze(0).to(device))[0].squeeze(0)
+
+target_markers = [(marker, marker_pos, correct_token) for marker, marker_pos, correct_token in markers if marker == MARKER_TARGET]
+
+for marker, marker_pos, correct_token in target_markers:
+    abs_pos = len(maze) + 1 + marker_pos
+
+    correct_target_logits = torch.zeros_like(target_logits[0])
+    correct_target_logits[encode(correct_token)[0]] = 1
+    print(correct_target_logits)
+    print(marker_pos, correct_token)
+    print(target_logits[abs_pos])
+
+inputs.append(tokens)
+targets.append(classes)
 
 
 padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0).to(device)
@@ -57,44 +71,6 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # %%
 
-class GPTWithProbe(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.probe_layers = nn.Sequential(
-            nn.Linear(gpt_model.config.n_embd, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Linear(256, num_classes)
-        )
-    
-    def forward(self, idx):
-        hidden_states = self.gpt(idx, return_hidden_states=True)
-        hidden_state = hidden_states[self.layer]  
-        logits = self.probe_layers(hidden_state)
-        return logits
-
-
-class GPTWithLinearProbe(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.probe_layers = nn.Sequential(
-            nn.Linear(gpt_model.config.n_embd, num_classes),
-        )
-    
-    def forward(self, idx):
-        hidden_states = self.gpt(idx, return_hidden_states=True)
-        hidden_state = hidden_states[self.layer]  
-        logits = self.probe_layers(hidden_state)
-        return logits
-
-
 class GPTWithActivationAddition(nn.Module):
     def __init__(self, gpt_model, layer, num_classes):
         super().__init__()
@@ -110,11 +86,6 @@ class GPTWithActivationAddition(nn.Module):
         steering_vector[self.layer] = self.activation_layers[0].weight[0]
         logits, _ = self.gpt(idx, return_hidden_states=True, add_activations=steering_vector)
         return logits
-
-
-
-ProbeModel = GPTWithLinearProbe
-
 
 
 # %%

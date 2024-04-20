@@ -34,7 +34,7 @@ compile = False  # use PyTorch 2.0 to compile the model to be faster
 # ---- CUSTOM CONFIGURATION ---
 import datetime
 
-out_dir = "out-mazes"
+out_dir = "out-mazes-correctable"
 eval_interval = 500  # keep frequent because we'll overfit
 eval_iters = 200
 log_interval = 100  # don't print too too often
