@@ -1,3 +1,12 @@
+# A Toy Model Of Fallible Maze Solvers
+
+This repo tests the ability of language models to solve mazes and to correct their errors. You can see most 
+
+This repo was originally forked from nanogpt.
+
+
+## Training and sampling
+
 To train:
 
 ```
