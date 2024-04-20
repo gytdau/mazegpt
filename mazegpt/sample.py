@@ -6,7 +6,7 @@ import pickle
 from contextlib import nullcontext
 import torch
 import tiktoken
-from model import GPTConfig, GPT
+from mazegpt.model import GPTConfig, GPT
 
 # -----------------------------------------------------------------------------
 init_from = (
@@ -90,6 +90,8 @@ ctx = (
     else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 )
 
+out_dir = os.path.join(os.path.dirname(__file__), out_dir)
+
 # model
 if init_from == "resume":
     # init from a model saved in a specific directory
@@ -119,7 +121,7 @@ if (
     and "config" in checkpoint
     and "dataset" in checkpoint["config"]
 ):  # older checkpoints might not have these...
-    meta_path = os.path.join("data", checkpoint["config"]["dataset"], "meta.pkl")
+    meta_path = os.path.join(os.path.dirname(__file__), "data", checkpoint["config"]["dataset"], "meta.pkl")
     load_meta = os.path.exists(meta_path)
 if load_meta:
     print(f"Loading meta from {meta_path}...")

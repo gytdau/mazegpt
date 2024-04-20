@@ -14,7 +14,7 @@ from torch.optim import Adam
 import torch.nn.functional as F
 from tqdm import tqdm
 
-dataset_path = os.path.join(os.path.dirname(__file__), "data/mazes/correctable/data.jsonl")
+dataset_path = os.path.join(os.path.dirname(__file__), "../data/mazes/correctable/data.jsonl")
 
 num_samples_for_probe = 500_000
 with open(dataset_path, "r") as f:

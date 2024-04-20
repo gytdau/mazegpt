@@ -19,7 +19,7 @@ from torch.optim import Adam
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 
-dataset_path = os.path.join(os.path.dirname(__file__), "data/mazes/correctable/data.jsonl")
+dataset_path = os.path.join(os.path.dirname(__file__), "../data/mazes/correctable/data.jsonl")
 
 num_samples_for_probe = 50_000
 with open(dataset_path, "r") as f:
@@ -72,7 +72,7 @@ class GPTWithProbe(nn.Module):
         )
     
     def forward(self, idx):
-        hidden_states = self.gpt(idx, return_hidden_states=True)
+        _, _, hidden_states = self.gpt(idx, return_hidden_states=True)
         hidden_state = hidden_states[self.layer]  
         logits = self.probe_layers(hidden_state)
         return logits
@@ -89,28 +89,10 @@ class GPTWithLinearProbe(nn.Module):
         )
     
     def forward(self, idx):
-        hidden_states = self.gpt(idx, return_hidden_states=True)
+        _, _, hidden_states = self.gpt(idx, return_hidden_states=True)
         hidden_state = hidden_states[self.layer]  
         logits = self.probe_layers(hidden_state)
         return logits
-
-
-class GPTWithActivationAddition(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.activation_layers = nn.Sequential(
-            nn.Linear(gpt_model.config.n_embd, num_classes),
-        )
-    
-    def forward(self, idx):
-        steering_vector = torch.zeros(model.config.n_layer, model.config.n_embd).to(device)
-        steering_vector[self.layer] = self.activation_layers[0].weight[0]
-        logits, _ = self.gpt(idx, return_hidden_states=True, add_activations=steering_vector)
-        return logits
-
 
 
 ProbeModel = GPTWithLinearProbe
