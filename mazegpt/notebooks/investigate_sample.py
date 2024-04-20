@@ -1,25 +1,10 @@
 
-
-# %%
+# %% [markdown]
+# Convenience file to sample the solution to a maze quickly.
 from gytis import imports
 from mazegpt.sample import model, encode, decode, device, stoi
 import torch
 from mazegpt.utils import display_maze, parse_maze
-# output = """s  #         #
-# ## # ##### # #
-#    # #     # #
-#  ##### ##### #
-#    #   #     #
-# ## # ### #####
-#  # #   # #   #
-#  # # # # # # #
-#    # # # # # #
-#  ### # ### # #
-#    # #     # #
-# ## ######### #
-#             e#
-# ##############;EESSWWSSEESSSSWWN;
-# """
 
 prompt="""##########
 #   #    e
@@ -32,21 +17,7 @@ prompt="""##########
 # ####### 
 #         ;"""
 
-# output = """s  #         #
-# ## # ##### # #
-#    # #     # #
-#  ##### ##### #
-#    #   #     #
-# ## # ### #####
-#  # #   # #   #
-#  # # # # # # #
-#    # # # # # #
-#  ### # ### # #
-#    # #     # #
-# ## ######### #
-#             e#
-# ##############;EESSWWSSEESSSSWWSSEESSEEEEEEEE;
-# """
+
 prompt_size = len(prompt)
 encoded = encode(prompt)
 encoded = torch.tensor(encoded).unsqueeze(0).to(device)

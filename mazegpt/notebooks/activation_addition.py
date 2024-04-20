@@ -1,7 +1,4 @@
 # %%
-"""
-Sample from a trained model
-"""
 from gytis import imports
 from mazegpt.sample import model, encode, decode, itos, stoi, device, block_size
 
