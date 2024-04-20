@@ -98,7 +98,7 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
 
 def display_maze_with_markers(maze: List[List[Tile]], directions: str = None, markers: List[int] = None) -> None:
     maze_token_length = len(serialize_maze(maze) + ";")
-    for marker, marker_pos in markers:
+    for marker, marker_pos, _ in markers:
         print("At marker", marker, "at move", marker_pos, " (abs:", maze_token_length + marker_pos, "tokens)")
         truncated_directions = directions[:marker_pos]
         display_maze(maze, truncated_directions)

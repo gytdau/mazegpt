@@ -138,6 +138,12 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
             if random.random() < MISTAKE_PROBABILITY:
                 other_possible_paths = []
 
+                x2, y2 = path[i+1]
+
+                dx2 = x2 - x
+                dy2 = y2 - y
+                correct_direction = get_direction(dx2, dy2)
+
                 for dx, dy in move_directions:
                     nx, ny = x + dx, y + dy
                     if 0 <= nx < n and 0 <= ny < n and maze[nx][ny] != Tile.WALL and (nx, ny) not in path:
@@ -151,7 +157,7 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
                 mistake_correction_move = get_direction(-dx, -dy)
 
                 directions.append(mistake_move)
-                markers.append((Markers.MISTAKE.value, len(directions), mistake_correction_move))
+                markers.append((Markers.MISTAKE.value, len(directions), correct_direction))
                 directions.append(mistake_correction_move)
                 markers.append((Markers.CORRECTION.value, len(directions), None))
                 # todo: maybe this is also a decision again?
