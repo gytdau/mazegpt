@@ -3,100 +3,23 @@
 Sample from a trained model
 """
 from gytis import imports
+from mazegpt.notebooks.prepare_data import prepare_data
 from mazegpt.sample import model, encode, decode, itos, stoi, device
 MARKER_TARGET = "fallible_goes_south"
 
 # %%
-import os
-import torch
-import torch.nn as nn
-import json
-from mazegpt.utils import display_maze, parse_maze
-from torch.utils.data import DataLoader, TensorDataset
-from torch.optim import AdamW
-import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
-
-dataset_path = os.path.join(os.path.dirname(__file__), "../data/mazes/correctable/data.jsonl")
-
-num_samples_for_probe = 10_000
-with open(dataset_path, "r") as f:
-    dataset = [json.loads(line) for line in f.readlines()[:num_samples_for_probe]]
-
-
-inputs = []
-targets = []
-for i, row in enumerate(dataset):
-    serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
-    tokens = torch.tensor(encode(serialized))  # Ensure this is a tensor or convert it into one
-    classes = torch.zeros(len(tokens), dtype=torch.long)
-
-    marker_positions = [len(row["maze"]) + 1 + marker_pos for marker, marker_pos, _ in row["markers"] if marker == MARKER_TARGET]
-    classes[marker_positions] = 1
-
-    if len(marker_positions) == 0:
-        continue
-
-    inputs.append(tokens)
-    targets.append(classes)
-
-
-padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0).to(device)
-padded_targets = pad_sequence(targets, batch_first=True, padding_value=0).to(device) 
-
-test_proportion = 0.2
-
-
-train_dataset = TensorDataset(padded_inputs[:int(len(padded_inputs) * (1 - test_proportion))], 
-                              padded_targets[:int(len(padded_targets) * (1 - test_proportion))])
-test_dataset = TensorDataset(padded_inputs[int(len(padded_inputs) * (1 - test_proportion)):], 
-                             padded_targets[int(len(padded_targets) * (1 - test_proportion)):])
-
-batch_size = 64  # Adjust based on your GPU memory
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-print(f"There are {len(padded_inputs)} samples in the dataset")
+dataset, train_loader, test_loader, get_ground_truth = prepare_data("../data/mazes/correctable/data.jsonl", 10_000, MARKER_TARGET)
 
 # %%
-class GPTWithLinearProbe(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.probe_layers = nn.Sequential(
-            nn.Linear(gpt_model.config.n_embd, num_classes),
-        )
-    
-    def forward(self, idx):
-        _, _, hidden_states = self.gpt(idx, return_hidden_states=True)
-        hidden_state = hidden_states[self.layer]  
-        logits = self.probe_layers(hidden_state)
-        return logits
-
-
-class GPTWithProbe(nn.Module):
-    def __init__(self, gpt_model, layer, num_classes):
-        super().__init__()
-        self.gpt = gpt_model
-        self.layer = layer
-        self.gpt.eval()  # Freeze the GPT model weights
-        self.probe_layers = nn.Sequential(
-            nn.Linear(gpt_model.config.n_embd, 512),
-            nn.ReLU(),
-            nn.Linear(512, num_classes)
-        )
-    
-    def forward(self, idx):
-        _, _, hidden_states = self.gpt(idx, return_hidden_states=True)
-        hidden_state = hidden_states[self.layer]  
-        logits = self.probe_layers(hidden_state)
-        return logits
-
-
+from torch.optim import AdamW
+import torch
+from mazegpt.notebooks.probes import GPTWithLinearProbe
 
 ProbeModel = GPTWithLinearProbe
+
+
+
+
 
 
 from tqdm import tqdm
