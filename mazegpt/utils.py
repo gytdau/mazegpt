@@ -23,6 +23,15 @@ class Markers(Enum):
     MISTAKE = "mistake"
     NON_MISTAKE = "non_mistake"
     CORRECTION = "correction"
+    FALLIBLE_GOES_SOUTH = "fallible_goes_south"
+    FALLIBLE_GOES_NORTH = "fallible_goes_north"
+    FALLIBLE_GOES_EAST = "fallible_goes_east"
+    FALLIBLE_GOES_WEST = "fallible_goes_west"
+    SOUTH_IS_POSSIBLE = "south_is_possible"
+    NORTH_IS_POSSIBLE = "north_is_possible"
+    EAST_IS_POSSIBLE = "east_is_possible"
+    WEST_IS_POSSIBLE = "west_is_possible"
+
 
 
 def interpolate_white_to_blue(p):

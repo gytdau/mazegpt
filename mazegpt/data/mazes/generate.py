@@ -59,7 +59,7 @@ display_maze(maze)
 
 from collections import deque
 
-MISTAKE_PROBABILITY = 0.2
+MISTAKE_PROBABILITY = 0 #0.2
 def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     n = len(maze)
     # Directions: up, right, down, left
@@ -112,27 +112,59 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
 
     def get_direction(dx, dy):
         if dx == 1:
-            return Tile.SOUTH.value
+            return Tile.SOUTH
         elif dx == -1:
-            return Tile.NORTH.value
+            return Tile.NORTH
         elif dy == 1:
-            return Tile.EAST.value
+            return Tile.EAST
         elif dy == -1:
-            return Tile.WEST.value
+            return Tile.WEST
 
     # Convert path to directions
     directions = []
     markers = []
+    
+    def add_marker(marker, relative_pos=0, marker_metadata=None):
+        markers.append((marker.value, len(directions) + relative_pos, marker_metadata))
+    
+    def is_move_possible(x, y):
+        return 0 <= x < n and 0 <= y < n and maze[x][y] != Tile.WALL
+
+    def add_direction(direction):
+        directions.append(direction.value)
+
+        if direction == Tile.SOUTH:
+            add_marker(Markers.FALLIBLE_GOES_SOUTH)
+        if direction == Tile.NORTH:
+            add_marker(Markers.FALLIBLE_GOES_NORTH)
+        if direction == Tile.EAST:
+            add_marker(Markers.FALLIBLE_GOES_EAST)
+        if direction == Tile.WEST:
+            add_marker(Markers.FALLIBLE_GOES_WEST)
+        
+
+
+
     for i in range(1, len(path)):
         x, y = path[i]
 
         dx = path[i][0] - path[i-1][0]
         dy = path[i][1] - path[i-1][1]
 
-        directions.append(get_direction(dx, dy))
+        add_direction(get_direction(dx, dy))
+
+        if is_move_possible(x+1, y):
+            add_marker(Markers.SOUTH_IS_POSSIBLE)
+        if is_move_possible(x-1, y):
+            add_marker(Markers.NORTH_IS_POSSIBLE)
+        if is_move_possible(x, y+1):
+            add_marker(Markers.EAST_IS_POSSIBLE)
+        if is_move_possible(x, y-1):
+            add_marker(Markers.WEST_IS_POSSIBLE)
+
 
         if (x, y) in decision_point:
-            markers.append((Markers.DECISION.value, len(directions), None))
+            add_marker(Markers.DECISION)
                 
         if (x, y) in decision_point:
             if random.random() < MISTAKE_PROBABILITY:
@@ -156,14 +188,14 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
                 mistake_move = get_direction(dx, dy)
                 mistake_correction_move = get_direction(-dx, -dy)
 
-                directions.append(mistake_move)
-                markers.append((Markers.MISTAKE.value, len(directions), correct_direction))
-                directions.append(mistake_correction_move)
-                markers.append((Markers.CORRECTION.value, len(directions), None))
+                add_direction(mistake_move)
+                add_marker(Markers.MISTAKE, 0, correct_direction)
+                add_direction(mistake_correction_move)
+                add_marker(Markers.CORRECTION)
                 # todo: maybe this is also a decision again?
             else:
                 # todo: maybe it sees this as a deicison again?
-                markers.append((Markers.NON_MISTAKE.value, len(directions)+1, None))
+                add_marker(Markers.NON_MISTAKE, 1)
 
     
 
@@ -182,7 +214,7 @@ import tqdm
 # Assume your functions are defined here
 
 def main():
-    quantity = 1_000_000
+    quantity = 50_000
 
     file_path = os.path.join(os.path.dirname(__file__), "correctable/data.jsonl")
     if os.path.exists(file_path):
