@@ -654,6 +654,24 @@ files = [
 tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipython", "littleutils", "pytest", "rich"]
 
 [[package]]
+name = "fastcore"
+version = "1.5.29"
+description = "Python supercharged for fastai development"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "fastcore-1.5.29-py3-none-any.whl", hash = "sha256:a7d7e89faf968f2d8584df2deca344c3974f6cf476e1299cd3c067d8fa7440e9"},
+    {file = "fastcore-1.5.29.tar.gz", hash = "sha256:f1a2eb04eb7933f3f9eb4064852817df44dc96e20fab5658c14c035815269a3f"},
+]
+
+[package.dependencies]
+packaging = "*"
+pip = "*"
+
+[package.extras]
+dev = ["jupyterlab", "matplotlib", "nbdev (>=0.2.39)", "numpy", "pandas", "pillow", "torch"]
+
+[[package]]
 name = "fastjsonschema"
 version = "2.19.1"
 description = "Fastest Python implementation of JSON schema"
@@ -1461,6 +1479,41 @@ files = [
 ]
 
 [[package]]
+name = "lovely-numpy"
+version = "0.2.11"
+description = "💟 Lovely numpy"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "lovely-numpy-0.2.11.tar.gz", hash = "sha256:aba4774a3e4a84bdc001194f1cb892ed673d6412f3b1ae6fbc2708347b3c3601"},
+    {file = "lovely_numpy-0.2.11-py3-none-any.whl", hash = "sha256:3587599bf7273df84c1cd909458a150967badb8aa097f92870aacf6b33f23f46"},
+]
+
+[package.dependencies]
+fastcore = "*"
+ipython = "*"
+matplotlib = "*"
+numpy = ">=1.17"
+
+[package.extras]
+dev = ["scipy"]
+
+[[package]]
+name = "lovely-tensors"
+version = "0.1.15"
+description = "❤️ Lovely Tensors"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "lovely-tensors-0.1.15.tar.gz", hash = "sha256:eb25efdf79f338752bdc427bea188a450bf2664e3912a3d7f932af8039e4f06b"},
+    {file = "lovely_tensors-0.1.15-py3-none-any.whl", hash = "sha256:26d3f8322fa20e396e6fdf4365d499738220202775856daa390695a5d3582dfd"},
+]
+
+[package.dependencies]
+lovely-numpy = ">=0.2.9"
+torch = "*"
+
+[[package]]
 name = "markupsafe"
 version = "2.1.5"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -2201,6 +2254,17 @@ mic = ["olefile"]
 tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "packaging", "pyroma", "pytest", "pytest-cov", "pytest-timeout"]
 typing = ["typing-extensions"]
 xmp = ["defusedxml"]
+
+[[package]]
+name = "pip"
+version = "24.0"
+description = "The PyPA recommended tool for installing Python packages."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pip-24.0-py3-none-any.whl", hash = "sha256:ba0d021a166865d2265246961bec0152ff124de910c5cc39f1156ce3fa7c69dc"},
+    {file = "pip-24.0.tar.gz", hash = "sha256:ea9bd1a847e8c5774a5777bb398c19e80bcd4e2aa16a4b301b718fe6f593aba2"},
+]
 
 [[package]]
 name = "platformdirs"
@@ -3655,4 +3719,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2db9833c4270ea77e6afeaf9787e1b6810a67713dba701b491397a13841582cc"
+content-hash = "1a2cd87bce37f0a291f200ae421b0665b17419811bbe5cc1f766ae62762a7b8f"

@@ -17,6 +17,7 @@ gytis = { path = "../gytis-tools/", develop = false }
 matplotlib = "^3.8.4"
 seaborn = "^0.13.2"
 plotly = "^5.20.0"
+lovely-tensors = "^0.1.15"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -17,6 +17,8 @@ class Tile(Enum):
     EAST = "E"
     WEST = "W"
     NEW_LINE = "\n"
+    CORRECT = "c"
+    MISTAKE = "m"
 
 class Markers(Enum):
     DECISION = "decision"
@@ -60,7 +62,7 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
         return "Start position not found."
 
     x, y = start_pos
-    path_positions = [(start_pos, None)]  # List of positions (x, y) visited with directions
+    path_positions = [(start_pos, "start")]  # List of positions (x, y) visited with directions
 
     direction_mapping = {
         Tile.EAST.value: (0, 1),
@@ -73,7 +75,9 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
         Tile.EAST.value: "→",
         Tile.WEST.value: "←",
         Tile.NORTH.value: "↑",
-        Tile.SOUTH.value: "↓"
+        Tile.SOUTH.value: "↓",
+        "start": "",
+        "end": "X"
     }
 
     if directions:
@@ -82,20 +86,32 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
                 dx, dy = direction_mapping[move]
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < len(maze) and 0 <= ny < len(maze[0]):
-                    x, y = nx, ny
                     path_positions.append(((x, y), move))
+                    x, y = nx, ny
                 else:
                     break
+    
+    path_positions.append(((x, y), "end"))
 
     html_str = '<table style="border-collapse: collapse;">\n'
     for i, row in enumerate(maze):
         html_str += '  <tr>\n'
         for j, tile in enumerate(row):
-            cell_style = 'background-color: {};'.format("lightgreen" if (i, j) == start_pos else "lightgray" if tile == Tile.WALL else "tomato" if tile == Tile.END else "white")
+            background_color = None
+            if (i, j) == start_pos:
+                background_color = "#4ade80"
+            elif tile == Tile.WALL:
+                background_color = "#d4d4d8"
+            elif tile == Tile.END:
+                background_color = "#f87171"
+            else:
+                background_color = "#f4f4f5"
+
+            cell_style = 'background-color: {};'.format(background_color)
             cell_content = ""
             for path_i in range(len(path_positions)):
                 pos, dir = path_positions[path_i]
-                if (i, j) == pos and dir:
+                if (i, j) == pos:
                     cell_content += direction_arrows[dir]
                     if signal and path_i < len(signal):
                         cell_style += interpolate_white_to_blue(signal[path_i] * 100)
@@ -121,7 +137,7 @@ def parse_directions(output: str) -> List[str]:
 
 def parse_maze(output: str) -> Tuple[List[List[Tile]], List[str]]:
     mazes = output.split(';\n')
-    mistake_prob, maze, directions = mazes[0].split(";")
+    maze, directions = mazes[0].split(";")
     maze = maze.split("\n")
     maze = [[Tile(tile) for tile in row] for row in maze]
     return maze, directions

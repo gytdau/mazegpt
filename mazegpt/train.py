@@ -256,8 +256,8 @@ if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])
 
 
-# encode('0123456789.# ')
-IGNORED_TOKENS = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 11, 10]).to(device)
+# encode('#. ')
+IGNORED_TOKENS = torch.tensor([1, 4, 0]).to(device)
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()

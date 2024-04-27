@@ -59,8 +59,9 @@ display_maze(maze)
 
 from collections import deque
 
+MISTAKE_PROB = 0
+
 def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
-    mistake_prob = random.random()
     n = len(maze)
     # Directions: up, right, down, left
     move_directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
@@ -127,21 +128,9 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
     def add_marker(marker, relative_pos=0, marker_metadata=None):
         markers.append((marker.value, len(directions) + relative_pos, marker_metadata))
     
-    def is_move_possible(x, y):
-        return 0 <= x < n and 0 <= y < n and maze[x][y] != Tile.WALL
-
     def add_direction(direction):
         directions.append(direction.value)
 
-        if direction == Tile.SOUTH:
-            add_marker(Markers.FALLIBLE_GOES_SOUTH)
-        if direction == Tile.NORTH:
-            add_marker(Markers.FALLIBLE_GOES_NORTH)
-        if direction == Tile.EAST:
-            add_marker(Markers.FALLIBLE_GOES_EAST)
-        if direction == Tile.WEST:
-            add_marker(Markers.FALLIBLE_GOES_WEST)
-        
 
 
 
@@ -153,21 +142,12 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
 
         add_direction(get_direction(dx, dy))
 
-        if is_move_possible(x+1, y):
-            add_marker(Markers.SOUTH_IS_POSSIBLE)
-        if is_move_possible(x-1, y):
-            add_marker(Markers.NORTH_IS_POSSIBLE)
-        if is_move_possible(x, y+1):
-            add_marker(Markers.EAST_IS_POSSIBLE)
-        if is_move_possible(x, y-1):
-            add_marker(Markers.WEST_IS_POSSIBLE)
-
 
         if (x, y) in decision_point:
             add_marker(Markers.DECISION)
                 
         if (x, y) in decision_point:
-            if random.random() < mistake_prob:
+            if random.random() < MISTAKE_PROB:
                 other_possible_paths = []
 
                 x2, y2 = path[i+1]
@@ -188,22 +168,19 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
                 mistake_move = get_direction(dx, dy)
                 mistake_correction_move = get_direction(-dx, -dy)
 
+                # add_direction(Tile.MISTAKE)
                 add_direction(mistake_move)
-                add_marker(Markers.MISTAKE, 0, correct_direction.value)
                 add_direction(mistake_correction_move)
-                add_marker(Markers.CORRECTION)
-                # todo: maybe this is also a decision again?
-            else:
-                # todo: maybe it sees this as a deicison again?
-                add_marker(Markers.NON_MISTAKE, 1)
+            # else:
+            #     add_direction(Tile.CORRECT)
 
     
 
-    return directions, markers, mistake_prob
+    return directions, markers, MISTAKE_PROB
 
 
 maze = generate_maze()
-directions, decision_steps, mistake_prob = find_shortest_path_with_directions(maze)
+directions, decision_steps, MISTAKE_PROB = find_shortest_path_with_directions(maze)
 print(serialize_sample(maze, directions))
 display_maze_with_markers(maze, directions, decision_steps)
 
@@ -214,22 +191,19 @@ import tqdm
 # Assume your functions are defined here
 
 def main():
-    quantity = 1_000_000
+    quantity = 100_000
 
-    file_path = os.path.join(os.path.dirname(__file__), "correctable/data.jsonl")
+    file_path = os.path.join(os.path.dirname(__file__), "eval/data.jsonl")
     if os.path.exists(file_path):
         os.remove(file_path)
     with open(file_path, 'a') as file:
         for _ in tqdm.tqdm(range(quantity)):
             maze = generate_maze()
             directions, markers, mistake_prob = find_shortest_path_with_directions(maze)
-            # Convert the maze to a JSON-compatible format
-            mistake_prob = f"{mistake_prob:.2f}"
             row = {
                 "maze": "\n".join(["".join([tile.value for tile in row]) for row in maze]),
-                "directions": "".join(directions),
-                "markers": markers,
-                "mistake_prob": mistake_prob
+                # "directions": "".join(directions),
+                # "markers": markers,
             }
 
             # Use string interpolation to create the JSON string manually
