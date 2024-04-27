@@ -16,9 +16,8 @@ def prepare_data(path, num_samples, marker_target):
     def get_ground_truth(tokens, row):
         classes = torch.zeros(len(tokens), dtype=torch.long)
 
-        seperator_len = 1
         offset = -1
-        abs_pos_offset = len(row["maze"]) + seperator_len + offset
+        abs_pos_offset = len(row["mistake_prob"] + ";" + row["maze"] + ";") + offset
 
         marker_positions = [abs_pos_offset + marker_pos for marker, marker_pos, _ in row["markers"] if marker == marker_target]
         classes[marker_positions] = 1
@@ -30,7 +29,7 @@ def prepare_data(path, num_samples, marker_target):
     inputs = []
     targets = []
     for i, row in enumerate(dataset):
-        serialized = row["maze"] + ";" + "".join(row["directions"]) + ";\n"
+        serialized = row["mistake_prob"] + ";" + row["maze"] + ";" + "".join(row["directions"]) + ";\n"
         tokens = torch.tensor(encode(serialized))  # Ensure this is a tensor or convert it into one
 
         classes = get_ground_truth(tokens, row)

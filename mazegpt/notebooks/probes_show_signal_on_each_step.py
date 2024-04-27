@@ -13,6 +13,7 @@ dataset, train_loader, test_loader, get_ground_truth = prepare_data("../data/maz
 # %%
 from torch.optim import AdamW
 from mazegpt.notebooks.probes import GPTWithLinearProbe
+import torch.nn.functional as F
 
 ProbeModel = GPTWithLinearProbe
 
@@ -58,7 +59,6 @@ from mazegpt.utils import display_maze, parse_maze, serialize_maze, serialize_sa
 import copy
 from tqdm import tqdm
 from itertools import product
-import torch.nn.functional as F
 import torch
 
 for row_id in range(10):

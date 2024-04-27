@@ -16,12 +16,12 @@ This repo was originally forked from nanogpt.
 2. Prepare it into train and test sets via `python3 data/mazes/prepare.py`
 3. To train:
     ```
-    python3 train.py config/train_maze_correctable.py
-    python3 train.py config/train_maze_oracle.py
+python3 train.py config/train_maze_correctable.py
+python3 train.py config/train_maze_oracle.py
     ```
 4. To sample:
 
     ```
-    python3 sample.py
+python3 sample.py
     ```
 

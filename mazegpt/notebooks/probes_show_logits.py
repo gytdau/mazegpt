@@ -11,11 +11,13 @@ from mazegpt.sample import model, encode, decode, itos, stoi, device
 # We're training a probe to predict whether the current move is a marker_predicted.
 # %%
 MARKER_TARGET = "mistake"
-dataset, train_loader, test_loader, get_ground_truth = prepare_data("../data/mazes/correctable/data.jsonl", 10_000, MARKER_TARGET)
+dataset, train_loader, test_loader, get_ground_truth = prepare_data("../data/mazes/correctable/data.jsonl", 100_000, MARKER_TARGET)
 
 # %%
 from torch.optim import AdamW
 from mazegpt.notebooks.probes import GPTWithLinearProbe
+import torch
+from torch.nn import functional as F
 
 ProbeModel = GPTWithLinearProbe
 
@@ -26,7 +28,7 @@ def train_model_at_layer(layer):
     print("---")
     print(f"Training probe at layer {layer}")
     probed_model = ProbeModel(model, layer=layer, num_classes=2).to(device)
-    optimizer = Adam(probed_model.probe_layers.parameters(), lr=0.001)
+    optimizer = AdamW(probed_model.probe_layers.parameters(), lr=0.01)
     EPOCHS = 10
     # Training loop
     def train_linear_probe():
@@ -64,7 +66,7 @@ for layer in [5]:
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze
+from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze, serialize_sample
 
 from plotly.subplots import make_subplots
 from plotly.graph_objects import Scatter
@@ -125,19 +127,22 @@ for (layer, probe) in probes:
     probe.eval()
     test_for_target(probe, MARKER_TARGET, layer)
 # %%
+from mazegpt.utils import display_maze, display_maze_with_markers, parse_maze, serialize_sample
 
 test_id = 79
 probe_id = 0
 token_id = 37
 
-# Print logits for this token
-# layer, probe = probes[0]
-example, example_target = test_dataset[test_id]
-example_row = dataset[len(train_dataset) + test_id]
-# only first tokens
-example_trimmed = example[:token_id]
+row = dataset[test_id]
 
-maze, directions = parse_maze(decode(example_trimmed.tolist()))
+maze, directions = parse_maze(row["maze"] + ";" + "".join(row["directions"]) + ";\n")
+markers = [(marker, pos, correct_move) for marker, pos, correct_move in row["markers"] if marker == MARKER_TARGET]
+
+tokens = encode(serialize_sample(maze, directions))
+# only first tokens
+example_trimmed = tokens[:token_id]
+
+maze, directions = parse_maze(decode(example_trimmed))
 display_maze(maze, directions)
 def display_logits(logits_a, logits_b,):
     import matplotlib.pyplot as plt

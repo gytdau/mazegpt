@@ -121,7 +121,7 @@ def parse_directions(output: str) -> List[str]:
 
 def parse_maze(output: str) -> Tuple[List[List[Tile]], List[str]]:
     mazes = output.split(';\n')
-    maze, directions = mazes[0].split(";")
+    mistake_prob, maze, directions = mazes[0].split(";")
     maze = maze.split("\n")
     maze = [[Tile(tile) for tile in row] for row in maze]
     return maze, directions

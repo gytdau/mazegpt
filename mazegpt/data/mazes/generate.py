@@ -59,8 +59,8 @@ display_maze(maze)
 
 from collections import deque
 
-MISTAKE_PROBABILITY = 0 #0.2
 def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
+    mistake_prob = random.random()
     n = len(maze)
     # Directions: up, right, down, left
     move_directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
@@ -167,7 +167,7 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
             add_marker(Markers.DECISION)
                 
         if (x, y) in decision_point:
-            if random.random() < MISTAKE_PROBABILITY:
+            if random.random() < mistake_prob:
                 other_possible_paths = []
 
                 x2, y2 = path[i+1]
@@ -189,7 +189,7 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
                 mistake_correction_move = get_direction(-dx, -dy)
 
                 add_direction(mistake_move)
-                add_marker(Markers.MISTAKE, 0, correct_direction)
+                add_marker(Markers.MISTAKE, 0, correct_direction.value)
                 add_direction(mistake_correction_move)
                 add_marker(Markers.CORRECTION)
                 # todo: maybe this is also a decision again?
@@ -199,11 +199,11 @@ def find_shortest_path_with_directions(maze: List[List[Tile]]) -> List[str]:
 
     
 
-    return directions, markers
+    return directions, markers, mistake_prob
 
 
 maze = generate_maze()
-directions, decision_steps = find_shortest_path_with_directions(maze)
+directions, decision_steps, mistake_prob = find_shortest_path_with_directions(maze)
 print(serialize_sample(maze, directions))
 display_maze_with_markers(maze, directions, decision_steps)
 
@@ -214,7 +214,7 @@ import tqdm
 # Assume your functions are defined here
 
 def main():
-    quantity = 50_000
+    quantity = 1_000_000
 
     file_path = os.path.join(os.path.dirname(__file__), "correctable/data.jsonl")
     if os.path.exists(file_path):
@@ -222,12 +222,14 @@ def main():
     with open(file_path, 'a') as file:
         for _ in tqdm.tqdm(range(quantity)):
             maze = generate_maze()
-            directions, markers = find_shortest_path_with_directions(maze)
+            directions, markers, mistake_prob = find_shortest_path_with_directions(maze)
             # Convert the maze to a JSON-compatible format
+            mistake_prob = f"{mistake_prob:.2f}"
             row = {
                 "maze": "\n".join(["".join([tile.value for tile in row]) for row in maze]),
                 "directions": "".join(directions),
-                "markers": markers
+                "markers": markers,
+                "mistake_prob": mistake_prob
             }
 
             # Use string interpolation to create the JSON string manually

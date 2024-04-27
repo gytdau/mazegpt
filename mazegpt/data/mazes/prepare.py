@@ -7,7 +7,8 @@ from mazegpt.utils import Tile
 # Assign ints for all
 stoi = {}
 
-new_tokens = [tile.value for tile in Tile]
+new_tokens = [str(i) for i in range(10)]
+new_tokens += [tile.value for tile in Tile]
 for token in new_tokens:
     stoi[token] = len(stoi)
 
@@ -22,12 +23,14 @@ def encode(data):
         line = json.loads(line)
         maze = line["maze"]
         directions = line["directions"]
+        mistake_prob = line["mistake_prob"]
 
-        serialized_line = maze
-        serialized_line += Tile.SEPERATOR.value + directions + Tile.SEPERATOR.value + Tile.NEW_LINE.value
+        serialized_line = [mistake_prob, Tile.SEPERATOR.value, maze, Tile.SEPERATOR.value, directions, Tile.SEPERATOR.value, Tile.NEW_LINE.value]
+        serialized_line = "".join(serialized_line)
 
         for char in serialized_line:
             tokens.append(stoi[char])
+        
 
     return tokens
 
@@ -56,7 +59,7 @@ def convert_log(dataset_path):
 
 
 if __name__ == "__main__":
-    convert_log(os.path.join(os.path.dirname(__file__), "oracle"))
+    # convert_log(os.path.join(os.path.dirname(__file__), "oracle"))
     convert_log(os.path.join(os.path.dirname(__file__), "correctable"))
 
 # %%

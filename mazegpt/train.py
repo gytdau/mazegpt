@@ -256,6 +256,9 @@ if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])
 
 
+# encode('0123456789.# ')
+IGNORED_TOKENS = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 11, 10]).to(device)
+
 # helps estimate an arbitrarily accurate loss over either split using many batches
 @torch.no_grad()
 def estimate_loss():
@@ -266,7 +269,7 @@ def estimate_loss():
         for k in range(eval_iters):
             X, Y = get_batch(split)
             with ctx:
-                logits, loss = model(X, Y)
+                logits, loss = model(X, Y, ignored_tokens=IGNORED_TOKENS)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -350,7 +353,7 @@ while True:
                 micro_step == gradient_accumulation_steps - 1
             )
         with ctx:
-            logits, loss = model(X, Y)
+            logits, loss = model(X, Y, ignored_tokens=IGNORED_TOKENS)
             loss = (
                 loss / gradient_accumulation_steps
             )  # scale the loss to account for gradient accumulation

@@ -208,7 +208,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None, return_hidden_states=False, add_activations=None):
+    def forward(self, idx, targets=None, return_hidden_states=False, add_activations=None, ignored_tokens=None):
         device = idx.device
         b, t = idx.size()
         assert (
@@ -240,8 +240,13 @@ class GPT(nn.Module):
         if targets is not None:
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
+
+            if ignored_tokens is not None:
+                mask = torch.isin(targets, ignored_tokens)
+                targets[mask] = -1
+
             loss = F.cross_entropy(
-                logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1
+                    logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1
             )
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
