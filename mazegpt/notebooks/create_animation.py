@@ -7,7 +7,7 @@ import torch
 from mazegpt.utils import display_maze, parse_maze
 
 
-prompt="""     # e 
+base_prompt="""     # e 
  ### ### 
  #s  #   
  ##### # 
@@ -31,43 +31,49 @@ char_to_arrow = {
 
 directions = "NESW"
 
-path_range = [20, 21] #[20, 40]
+path_range = [20, 40] #[20, 40]
 for path_pos in range(path_range[0], path_range[1]):
-    path_suffix = path[:path_pos]
-    total_prompt = prompt + path_suffix
-
-    # display_maze(*parse_maze(total_prompt))
-
-
-    prompt_size = len(total_prompt)
-    encoded = encode(total_prompt)
+    prompt = base_prompt + path[:path_pos]
+    prompt_size = len(prompt)
+    encoded = encode(prompt)
     encoded = torch.tensor(encoded).unsqueeze(0).to(device)
-    completion_tokens = model.generate(encoded, max_new_tokens=120, temperature=0.1)
-    completion = decode(completion_tokens.squeeze(0)[prompt_size:].tolist())
+    # completion_tokens = model.generate(encoded, max_new_tokens=1, temperature=0.1)
+    # completion = decode(completion_tokens.squeeze(0)[prompt_size:].tolist())
     # cut off at first ;
-    seperator = ";"
-    completion = completion[:completion.index(seperator)].strip()
-    maze, directions = parse_maze(prompt + completion)
-    # display_maze(maze, directions)
 
     import torch.nn.functional as F
 
 
-    token_id = len(total_prompt)
+    token_id = len(prompt)
 
     # Display up to token_id
-    trimmed = completion_tokens[:, :token_id]
-    trimmed = trimmed.squeeze(0)
-    trimmed = trimmed.tolist()
-    trimmed = decode(trimmed)
+    # trimmed = completion_tokens[:, :token_id]
+    # trimmed = trimmed.squeeze(0)
+    # trimmed = trimmed.tolist()
+    # trimmed = decode(trimmed)
+    display_maze(*parse_maze(prompt))
 
 
     with torch.no_grad():  
-        example_logits, _ = model(completion_tokens)
+        example_logits, _ = model(encoded)
         example_logits = example_logits.squeeze(0).squeeze(0)
         # softmax
         softmaxed = F.softmax(example_logits, dim=-1).cpu()[token_id-1]
 
+    # for i in stoi.values():
+    #     print(f"{repr(decode([i]))}: {softmaxed[i]:.2f}")
+
+
+    import plotly.graph_objects as go
+
+    char_to_arrow = {
+        "N": "↑",
+        "E": "→",
+        "S": "↓",
+        "W": "←",
+    }
+
+    directions = "NESW"
     probabilities = [softmaxed[stoi[char]].item() for char in directions]
     arrows = [char_to_arrow[char] for char in directions]
     fig = go.Figure(go.Bar(
@@ -100,7 +106,7 @@ for path_pos in range(path_range[0], path_range[1]):
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
     )
-    # save to png
+    # save to image
+    fig.write_image(f"test_{path_pos}.png")
     fig.show()
-
 # %%

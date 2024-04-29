@@ -15,7 +15,7 @@ prompt="""     # e
  ##### # 
  #   # # 
  # # # # 
-   #   # ;EENNWWWWSSSSSSSSEENNEESSEENNNNW"""
+   #   # ;EENNWWWWSSSSSSSSEENNEESSEENNNN"""
 
 
 prompt_size = len(prompt)
