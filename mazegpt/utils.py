@@ -93,7 +93,7 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
     
     path_positions.append(((x, y), "end"))
 
-    html_str = '<table style="border-collapse: collapse;">\n'
+    html_str = '<div><div style="border: 3px solid grey; display: inline-block; flex-direction: column;"><table style="border-collapse: collapse;">\n'
     for i, row in enumerate(maze):
         html_str += '  <tr>\n'
         for j, tile in enumerate(row):
@@ -117,7 +117,7 @@ def display_maze(maze: List[List[Tile]], directions: str = None, signal: List[fl
                         cell_style += interpolate_white_to_blue(signal[path_i] * 100)
             html_str += f'    <td style="width: 20px; height: 20px; border: 1px solid; {cell_style} text-align: center; color: black;">{html.escape(cell_content)}</td>\n'
         html_str += '  </tr>\n'
-    html_str += '</table>'
+    html_str += '</table></div></div>'
 
     display(HTML(html_str))
 
