@@ -57,7 +57,8 @@ def convert_log(dataset_path):
 
 
 if __name__ == "__main__":
-    convert_log(os.path.join(os.path.dirname(__file__), "oracle"))
-    convert_log(os.path.join(os.path.dirname(__file__), "fallible"))
+    # convert_log(os.path.join(os.path.dirname(__file__), "oracle"))
+    # convert_log(os.path.join(os.path.dirname(__file__), "fallible"))
+    pass
 
 # %%
