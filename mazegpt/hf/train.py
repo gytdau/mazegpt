@@ -1,3 +1,4 @@
+# %%
 from transformers import GPT2LMHeadModel, GPT2Config, TextDataset, DataCollatorForLanguageModeling, TrainingArguments, Trainer
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
@@ -24,8 +25,8 @@ model = GPT2LMHeadModel(config)
 
 # Load the tokenizer
 tokenizer = Tokenizer(BPE(
-    vocab="../model/vocab.json",
-    merges="../model/merges.txt",
+    vocab="./model/vocab.json",
+    merges="./model/merges.txt",
 ))
 
 # %%
@@ -45,21 +46,22 @@ tokenizer = Tokenizer(BPE(
 
 # %%
 
-from transformers import TextDataset, DataCollatorForLanguageModeling
-from datasets import load_dataset
-
 dataset = load_dataset("text", data_files=["../data/mazes/fallible/text_data.txt"])
+def tokenize_function(examples):
+    return {"input_ids": [enc.ids for enc in tokenizer.encode_batch(examples["text"])]}
 
+tokenized_dataset = dataset.map(tokenize_function, batched=True, remove_columns=["text"])
+
+# %%
 # Define the data collator
 data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-# %%
-from datasets import Dataset
-from transformers import TrainingArguments, Trainer
-
 
 # Split the dataset into train and validation sets
-train_dataset, val_dataset = dataset.train_test_split(test_size=0.2)
+split = tokenized_dataset["train"].train_test_split(test_size=0.2)
+train_dataset = split["train"]
+val_dataset = split["test"]
 
+# %%
 # Define the training arguments
 training_args = TrainingArguments(
     output_dir="./results",
@@ -82,5 +84,4 @@ trainer = Trainer(
 
 # Start the training process
 trainer.train()
-
 # %%
