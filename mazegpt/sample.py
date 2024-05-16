@@ -1,6 +1,7 @@
 """
 Sample from a trained model
 """
+
 import os
 import pickle
 from contextlib import nullcontext
@@ -121,7 +122,9 @@ if (
     and "config" in checkpoint
     and "dataset" in checkpoint["config"]
 ):  # older checkpoints might not have these...
-    meta_path = os.path.join(os.path.dirname(__file__), "data", checkpoint["config"]["dataset"], "meta.pkl")
+    meta_path = os.path.join(
+        os.path.dirname(__file__), "data", checkpoint["config"]["dataset"], "meta.pkl"
+    )
     load_meta = os.path.exists(meta_path)
 if load_meta:
     print(f"Loading meta from {meta_path}...")
@@ -150,6 +153,8 @@ if __name__ == "__main__":
     with torch.no_grad():
         with ctx:
             for k in range(num_samples):
-                y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
+                y = model.generate(
+                    x, max_new_tokens, temperature=temperature, top_k=top_k
+                )
                 print(decode(y[0].tolist()))
                 print("---------------")

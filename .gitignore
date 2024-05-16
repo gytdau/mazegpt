@@ -15,4 +15,4 @@ wandb/
 mazegpt/data/addition/data.txt
 mazegpt/data/mazes/*.txt
 mazegpt/data/mazes/fallible/*.txt
-
+mazegpt/hf/results

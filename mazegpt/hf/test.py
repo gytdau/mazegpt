@@ -1,4 +1,5 @@
 # %%
+import torch
 from transformers import GPT2LMHeadModel, GPT2Config, TextDataset, DataCollatorForLanguageModeling, TrainingArguments, Trainer, PreTrainedTokenizerFast, PreTrainedTokenizer
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
@@ -20,8 +21,9 @@ config = GPT2Config(
     initializer_range=0.02,
 )
 
-# Initialize the model from scratch
-model = GPT2LMHeadModel(config)
+# Load in the model from the checkpoint from safetensors
+model = GPT2LMHeadModel.from_pretrained("results/checkpoint-30000")
+
 
 # Load the tokenizer
 tokenizer = Tokenizer(BPE(
@@ -39,63 +41,9 @@ tokenizer = PreTrainedTokenizerFast(tokenizer_file="./model/tokenizer.json",
 
 # %%
 
-# import json
-# text_data = ""
-# with open('../data/mazes/fallible/data.jsonl', 'r') as f:
-#     lines = f.readlines()
-#     for line in lines:
-#         parsed = json.loads(line)
-#         text_data += parsed["maze"] + ";" + parsed["directions"] + ";\n\n"
 
-# # Write text_data to a file.
-# with open('../data/mazes/fallible/text_data.txt', 'w') as f:
-#     f.write(text_data)
-
-# %%
-
-dataset = load_dataset("text", data_files=["../data/mazes/fallible/text_data.txt"], keep_in_memory=True, sample_by="paragraph")
-
-def tokenize_function(examples):
-    return tokenizer(examples["text"])
-
-tokenized_dataset = dataset.map(tokenize_function, batched=True, num_proc=4, remove_columns=["text"])
-
-# %%
-# Define the data collator
-data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-
-# Split the dataset into train and validation sets
-split = tokenized_dataset["train"].train_test_split(test_size=0.0025)
-train_dataset = split["train"]
-val_dataset = split["test"]
-
-# %%
-# Define the training arguments
-training_args = TrainingArguments(
-    output_dir="./results",
-    num_train_epochs=2,
-    per_device_train_batch_size=64,
-    per_device_eval_batch_size=64,
-    evaluation_strategy="steps",
-    save_strategy="steps",
-    save_steps=10000,
-    eval_steps=10000,
-    logging_steps=500,
-)
-
-# Create a Trainer instance
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    eval_dataset=val_dataset,
-    data_collator=data_collator,
-)
-
-# Start the training process
-trainer.train()
-# %%
 device = "cuda"
+model.to(device)
 
 def generate_text(prompt, max_length=100):
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
